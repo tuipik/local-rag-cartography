@@ -8,13 +8,19 @@ import hashlib
 import sqlite3
 import sys
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
 
 SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+DOCUMENT_TYPES = {
+    ".pdf": "pdf",
+    ".doc": "word",
+    ".docx": "word",
+    ".txt": "text",
+}
 DEFAULT_DATABASE = Path("data/catalog/documents.sqlite")
 HASH_CHUNK_SIZE = 1024 * 1024
 
@@ -25,10 +31,21 @@ class Document:
     relative_path: str
     name: str
     extension: str
+    document_type: str
+    parent_dir: str
+    relative_dir: str
     size_bytes: int
     modified_at: str
     sha256: str
-    category: str
+    folder_category: str
+    content_category: str | None
+    is_temp_file: bool
+    is_supported: bool
+    is_duplicate_candidate: bool
+    pages_count: int | None
+    has_text: bool | None
+    ocr_required: bool | None
+    scan_status: str
     scan_root: str
     scanned_at: str
 
@@ -62,7 +79,7 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def category_for(relative_path: Path) -> str:
+def folder_category_for(relative_path: Path) -> str:
     return relative_path.parts[0] if len(relative_path.parts) > 1 else "uncategorized"
 
 
@@ -97,12 +114,27 @@ def scan_documents(
                     relative_path=str(relative_path),
                     name=path.name,
                     extension=path.suffix.lower().lstrip("."),
+                    document_type=DOCUMENT_TYPES[path.suffix.lower()],
+                    parent_dir=path.parent.name,
+                    relative_dir=(
+                        str(relative_path.parent)
+                        if relative_path.parent != Path(".")
+                        else ""
+                    ),
                     size_bytes=stat.st_size,
                     modified_at=datetime.fromtimestamp(
                         stat.st_mtime, timezone.utc
                     ).isoformat(),
                     sha256=sha256_file(path),
-                    category=category_for(relative_path),
+                    folder_category=folder_category_for(relative_path),
+                    content_category=None,
+                    is_temp_file=False,
+                    is_supported=True,
+                    is_duplicate_candidate=False,
+                    pages_count=None,
+                    has_text=None,
+                    ocr_required=None,
+                    scan_status="cataloged",
                     scan_root=str(root),
                     scanned_at=scanned_at,
                 )
@@ -110,6 +142,14 @@ def scan_documents(
         except (OSError, ValueError) as error:
             errors.append((path, str(error)))
 
+    hash_counts = Counter(document.sha256 for document in documents)
+    documents = [
+        replace(
+            document,
+            is_duplicate_candidate=hash_counts[document.sha256] > 1,
+        )
+        for document in documents
+    ]
     return documents, errors
 
 
@@ -122,20 +162,65 @@ def initialize_database(connection: sqlite3.Connection) -> None:
             relative_path TEXT NOT NULL,
             name TEXT NOT NULL,
             extension TEXT NOT NULL,
+            document_type TEXT NOT NULL,
+            parent_dir TEXT NOT NULL,
+            relative_dir TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
             modified_at TEXT NOT NULL,
             sha256 TEXT NOT NULL,
-            category TEXT NOT NULL,
+            folder_category TEXT NOT NULL,
+            content_category TEXT,
+            is_temp_file INTEGER NOT NULL DEFAULT 0,
+            is_supported INTEGER NOT NULL DEFAULT 1,
+            is_duplicate_candidate INTEGER NOT NULL DEFAULT 0,
+            pages_count INTEGER,
+            has_text INTEGER,
+            ocr_required INTEGER,
+            scan_status TEXT NOT NULL DEFAULT 'cataloged',
             scan_root TEXT NOT NULL,
             scanned_at TEXT NOT NULL
         )
         """
     )
+
+    columns = {
+        row[1] for row in connection.execute("PRAGMA table_info(documents)").fetchall()
+    }
+    if "category" in columns and "folder_category" not in columns:
+        connection.execute(
+            "ALTER TABLE documents RENAME COLUMN category TO folder_category"
+        )
+        columns.remove("category")
+        columns.add("folder_category")
+
+    migrations = {
+        "document_type": "TEXT NOT NULL DEFAULT 'unknown'",
+        "parent_dir": "TEXT NOT NULL DEFAULT ''",
+        "relative_dir": "TEXT NOT NULL DEFAULT ''",
+        "content_category": "TEXT",
+        "is_temp_file": "INTEGER NOT NULL DEFAULT 0",
+        "is_supported": "INTEGER NOT NULL DEFAULT 1",
+        "is_duplicate_candidate": "INTEGER NOT NULL DEFAULT 0",
+        "pages_count": "INTEGER",
+        "has_text": "INTEGER",
+        "ocr_required": "INTEGER",
+        "scan_status": "TEXT NOT NULL DEFAULT 'cataloged'",
+    }
+    for column, definition in migrations.items():
+        if column not in columns:
+            connection.execute(
+                f"ALTER TABLE documents ADD COLUMN {column} {definition}"
+            )
+
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_documents_sha256 ON documents(sha256)"
     )
+    connection.execute("DROP INDEX IF EXISTS idx_documents_category")
     connection.execute(
-        "CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)"
+        """
+        CREATE INDEX IF NOT EXISTS idx_documents_folder_category
+        ON documents(folder_category)
+        """
     )
 
 
@@ -143,24 +228,31 @@ def save_documents(database: Path, root: Path, documents: list[Document]) -> Non
     database.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(database) as connection:
         initialize_database(connection)
-        connection.execute(
-            "DELETE FROM documents WHERE scan_root = ?",
-            (str(root),),
-        )
         connection.executemany(
             """
             INSERT INTO documents (
-                path, relative_path, name, extension, size_bytes, modified_at,
-                sha256, category, scan_root, scanned_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                path, relative_path, name, extension, document_type, parent_dir,
+                relative_dir, size_bytes, modified_at, sha256, folder_category,
+                content_category, is_temp_file, is_supported,
+                is_duplicate_candidate, pages_count, has_text, ocr_required,
+                scan_status, scan_root, scanned_at
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
             ON CONFLICT(path) DO UPDATE SET
                 relative_path = excluded.relative_path,
                 name = excluded.name,
                 extension = excluded.extension,
+                document_type = excluded.document_type,
+                parent_dir = excluded.parent_dir,
+                relative_dir = excluded.relative_dir,
                 size_bytes = excluded.size_bytes,
                 modified_at = excluded.modified_at,
                 sha256 = excluded.sha256,
-                category = excluded.category,
+                folder_category = excluded.folder_category,
+                is_temp_file = excluded.is_temp_file,
+                is_supported = excluded.is_supported,
+                is_duplicate_candidate = excluded.is_duplicate_candidate,
                 scan_root = excluded.scan_root,
                 scanned_at = excluded.scanned_at
             """,
@@ -170,15 +262,45 @@ def save_documents(database: Path, root: Path, documents: list[Document]) -> Non
                     document.relative_path,
                     document.name,
                     document.extension,
+                    document.document_type,
+                    document.parent_dir,
+                    document.relative_dir,
                     document.size_bytes,
                     document.modified_at,
                     document.sha256,
-                    document.category,
+                    document.folder_category,
+                    document.content_category,
+                    document.is_temp_file,
+                    document.is_supported,
+                    document.is_duplicate_candidate,
+                    document.pages_count,
+                    document.has_text,
+                    document.ocr_required,
+                    document.scan_status,
                     document.scan_root,
                     document.scanned_at,
                 )
                 for document in documents
             ],
+        )
+        connection.execute(
+            """
+            CREATE TEMP TABLE current_scan_paths (
+                path TEXT PRIMARY KEY
+            )
+            """
+        )
+        connection.executemany(
+            "INSERT INTO current_scan_paths(path) VALUES (?)",
+            [(document.path,) for document in documents],
+        )
+        connection.execute(
+            """
+            DELETE FROM documents
+            WHERE scan_root = ?
+              AND path NOT IN (SELECT path FROM current_scan_paths)
+            """,
+            (str(root),),
         )
 
 
@@ -202,7 +324,7 @@ def print_statistics(
     documents: list[Document], errors: list[tuple[Path, str]]
 ) -> None:
     types = Counter(document.extension for document in documents)
-    categories = Counter(document.category for document in documents)
+    categories = Counter(document.folder_category for document in documents)
     duplicates = duplicate_groups(documents)
 
     print("\nСтатистика каталогу")
@@ -216,7 +338,7 @@ def print_statistics(
     else:
         print("  немає")
 
-    print("\nКатегорії:")
+    print("\nКатегорії за папками:")
     if categories:
         for category, count in sorted(categories.items()):
             print(f"  {category}: {count}")
