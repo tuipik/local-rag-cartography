@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""Scan a document directory and store its catalog in SQLite."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import sqlite3
+import sys
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterable
+
+
+SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+DEFAULT_DATABASE = Path("data/catalog/documents.sqlite")
+HASH_CHUNK_SIZE = 1024 * 1024
+
+
+@dataclass(frozen=True)
+class Document:
+    path: str
+    relative_path: str
+    name: str
+    extension: str
+    size_bytes: int
+    modified_at: str
+    sha256: str
+    category: str
+    scan_root: str
+    scanned_at: str
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Catalog PDF, DOC, DOCX and TXT files in SQLite."
+    )
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        type=Path,
+        default=Path.cwd(),
+        help="directory to scan recursively (default: current directory)",
+    )
+    parser.add_argument(
+        "--database",
+        "-d",
+        type=Path,
+        default=DEFAULT_DATABASE,
+        help=f"SQLite database path (default: {DEFAULT_DATABASE})",
+    )
+    return parser.parse_args()
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        while chunk := file.read(HASH_CHUNK_SIZE):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def category_for(relative_path: Path) -> str:
+    return relative_path.parts[0] if len(relative_path.parts) > 1 else "uncategorized"
+
+
+def iter_document_paths(root: Path, database: Path) -> Iterable[Path]:
+    database = database.resolve()
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.name.startswith("~$"):
+            continue
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        if path.resolve() == database:
+            continue
+        yield path
+
+
+def scan_documents(
+    root: Path, database: Path
+) -> tuple[list[Document], list[tuple[Path, str]]]:
+    documents: list[Document] = []
+    errors: list[tuple[Path, str]] = []
+    scanned_at = datetime.now(timezone.utc).isoformat()
+
+    for path in iter_document_paths(root, database):
+        try:
+            stat = path.stat()
+            relative_path = path.relative_to(root)
+            documents.append(
+                Document(
+                    path=str(path.resolve()),
+                    relative_path=str(relative_path),
+                    name=path.name,
+                    extension=path.suffix.lower().lstrip("."),
+                    size_bytes=stat.st_size,
+                    modified_at=datetime.fromtimestamp(
+                        stat.st_mtime, timezone.utc
+                    ).isoformat(),
+                    sha256=sha256_file(path),
+                    category=category_for(relative_path),
+                    scan_root=str(root),
+                    scanned_at=scanned_at,
+                )
+            )
+        except (OSError, ValueError) as error:
+            errors.append((path, str(error)))
+
+    return documents, errors
+
+
+def initialize_database(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY,
+            path TEXT NOT NULL UNIQUE,
+            relative_path TEXT NOT NULL,
+            name TEXT NOT NULL,
+            extension TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL,
+            modified_at TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            category TEXT NOT NULL,
+            scan_root TEXT NOT NULL,
+            scanned_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_documents_sha256 ON documents(sha256)"
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)"
+    )
+
+
+def save_documents(database: Path, root: Path, documents: list[Document]) -> None:
+    database.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(database) as connection:
+        initialize_database(connection)
+        connection.execute(
+            "DELETE FROM documents WHERE scan_root = ?",
+            (str(root),),
+        )
+        connection.executemany(
+            """
+            INSERT INTO documents (
+                path, relative_path, name, extension, size_bytes, modified_at,
+                sha256, category, scan_root, scanned_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(path) DO UPDATE SET
+                relative_path = excluded.relative_path,
+                name = excluded.name,
+                extension = excluded.extension,
+                size_bytes = excluded.size_bytes,
+                modified_at = excluded.modified_at,
+                sha256 = excluded.sha256,
+                category = excluded.category,
+                scan_root = excluded.scan_root,
+                scanned_at = excluded.scanned_at
+            """,
+            [
+                (
+                    document.path,
+                    document.relative_path,
+                    document.name,
+                    document.extension,
+                    document.size_bytes,
+                    document.modified_at,
+                    document.sha256,
+                    document.category,
+                    document.scan_root,
+                    document.scanned_at,
+                )
+                for document in documents
+            ],
+        )
+
+
+def human_size(size_bytes: int) -> str:
+    value = float(size_bytes)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if value < 1024 or unit == "TiB":
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+        value /= 1024
+    raise AssertionError("unreachable")
+
+
+def duplicate_groups(documents: list[Document]) -> list[list[Document]]:
+    by_hash: dict[str, list[Document]] = defaultdict(list)
+    for document in documents:
+        by_hash[document.sha256].append(document)
+    return [group for group in by_hash.values() if len(group) > 1]
+
+
+def print_statistics(
+    documents: list[Document], errors: list[tuple[Path, str]]
+) -> None:
+    types = Counter(document.extension for document in documents)
+    categories = Counter(document.category for document in documents)
+    duplicates = duplicate_groups(documents)
+
+    print("\nСтатистика каталогу")
+    print(f"Файлів: {len(documents)}")
+    print(f"Загальний розмір: {human_size(sum(d.size_bytes for d in documents))}")
+
+    print("\nТипи:")
+    if types:
+        for extension, count in sorted(types.items()):
+            print(f"  {extension.upper()}: {count}")
+    else:
+        print("  немає")
+
+    print("\nКатегорії:")
+    if categories:
+        for category, count in sorted(categories.items()):
+            print(f"  {category}: {count}")
+    else:
+        print("  немає")
+
+    duplicate_file_count = sum(len(group) for group in duplicates)
+    reclaimable_size = sum(
+        group[0].size_bytes * (len(group) - 1) for group in duplicates
+    )
+    print("\nПотенційні дублікати (однаковий SHA-256):")
+    print(f"  груп: {len(duplicates)}")
+    print(f"  файлів у групах: {duplicate_file_count}")
+    print(f"  потенційно зайвий розмір: {human_size(reclaimable_size)}")
+    for index, group in enumerate(duplicates, start=1):
+        print(f"  Група {index} ({human_size(group[0].size_bytes)}):")
+        for document in group:
+            print(f"    {document.relative_path}")
+
+    if errors:
+        print(f"\nНе вдалося прочитати файлів: {len(errors)}", file=sys.stderr)
+        for path, message in errors:
+            print(f"  {path}: {message}", file=sys.stderr)
+
+
+def main() -> int:
+    args = parse_args()
+    root = args.directory.expanduser().resolve()
+    database = args.database.expanduser().resolve()
+
+    if not root.is_dir():
+        print(f"Помилка: папку не знайдено: {root}", file=sys.stderr)
+        return 2
+
+    documents, errors = scan_documents(root, database)
+    try:
+        save_documents(database, root, documents)
+    except sqlite3.Error as error:
+        print(f"Помилка SQLite: {error}", file=sys.stderr)
+        return 1
+
+    print(f"Проскановано: {root}")
+    print(f"База даних: {database}")
+    print_statistics(documents, errors)
+    return 0 if not errors else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
