@@ -26,6 +26,8 @@ from local_rag.reporting import print_counter
 PAGE_CHUNK_LIMIT = 3000
 TARGET_CHUNK_SIZE = 2500
 CHUNK_OVERLAP = 300
+MIN_CHUNK_LENGTH = 100
+MIN_SHORT_DOCUMENT_LENGTH = 50
 MIN_STRUCTURE_MARKERS = 3
 
 POINT_PATTERN = re.compile(
@@ -92,6 +94,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=CHUNK_OVERLAP,
         help=f"character overlap for long-page splits (default: {CHUNK_OVERLAP})",
+    )
+    parser.add_argument(
+        "--min-chunk-length",
+        type=int,
+        default=MIN_CHUNK_LENGTH,
+        help=(
+            "minimum chunk length unless the whole document is shorter "
+            f"(default: {MIN_CHUNK_LENGTH})"
+        ),
     )
     return parser.parse_args()
 
@@ -367,6 +378,41 @@ def build_page_chunks(
     return chunks
 
 
+def total_document_text_length(pages: list[Page]) -> int:
+    return sum(len(normalize_chunk_text(page.text or "")) for page in pages)
+
+
+def filter_short_chunks(
+    chunks: list[Chunk],
+    document_text_length: int,
+    min_chunk_length: int,
+) -> tuple[list[Chunk], int]:
+    if document_text_length < min_chunk_length:
+        if document_text_length >= MIN_SHORT_DOCUMENT_LENGTH:
+            return chunks, 0
+        return [], len(chunks)
+
+    kept_chunks = [
+        chunk for chunk in chunks if chunk.chunk_length >= min_chunk_length
+    ]
+    skipped_count = len(chunks) - len(kept_chunks)
+    reindexed_chunks = [
+        Chunk(
+            document_id=chunk.document_id,
+            page_id=chunk.page_id,
+            page_number=chunk.page_number,
+            chunk_index=index,
+            chunk_text=chunk.chunk_text,
+            chunk_strategy=chunk.chunk_strategy,
+            source_type=chunk.source_type,
+            start_char=chunk.start_char,
+            end_char=chunk.end_char,
+        )
+        for index, chunk in enumerate(kept_chunks)
+    ]
+    return reindexed_chunks, skipped_count
+
+
 def save_chunks(connection: sqlite3.Connection, chunks: list[Chunk]) -> None:
     created_at = utc_now()
     connection.execute("DELETE FROM chunks")
@@ -421,6 +467,7 @@ def build_chunks(
     page_chunk_limit: int,
     target_chunk_size: int,
     overlap: int,
+    min_chunk_length: int,
 ) -> tuple[list[Chunk], Counter[str], Counter[str]]:
     chunks: list[Chunk] = []
     stats: Counter[str] = Counter()
@@ -444,7 +491,7 @@ def build_chunks(
                 skipped["no_text"] += 1
                 continue
 
-            stats["documents_processed"] += 1
+            document_chunks: list[Chunk] = []
             document_chunk_index = 0
             for page in pages:
                 page_chunks = build_page_chunks(
@@ -455,8 +502,20 @@ def build_chunks(
                     target_chunk_size=target_chunk_size,
                     overlap=overlap,
                 )
-                chunks.extend(page_chunks)
+                document_chunks.extend(page_chunks)
                 document_chunk_index += len(page_chunks)
+
+            document_chunks, short_skipped = filter_short_chunks(
+                chunks=document_chunks,
+                document_text_length=total_document_text_length(pages),
+                min_chunk_length=min_chunk_length,
+            )
+            skipped["short_chunks"] += short_skipped
+            if not document_chunks:
+                skipped["too_short_documents"] += 1
+                continue
+            stats["documents_processed"] += 1
+            chunks.extend(document_chunks)
 
         save_chunks(connection, chunks)
 
@@ -470,7 +529,11 @@ def print_statistics(
 ) -> None:
     strategy_counts = Counter(chunk.chunk_strategy for chunk in chunks)
     length_stats = describe_lengths([chunk.chunk_length for chunk in chunks])
-    documents_skipped = sum(skipped.values())
+    documents_skipped = (
+        skipped["ocr_required"]
+        + skipped["no_text"]
+        + skipped["too_short_documents"]
+    )
 
     print("\nChunking statistics")
     print(f"Documents processed: {stats['documents_processed']}")
@@ -488,6 +551,8 @@ def print_statistics(
     print("\nSkipped:")
     print(f"  ocr_required: {skipped['ocr_required']}")
     print(f"  no_text: {skipped['no_text']}")
+    print(f"  too_short_documents: {skipped['too_short_documents']}")
+    print(f"  short_chunks_skipped: {skipped['short_chunks']}")
 
 
 def main() -> int:
@@ -499,6 +564,7 @@ def main() -> int:
             page_chunk_limit=args.page_chunk_limit,
             target_chunk_size=args.target_chunk_size,
             overlap=args.overlap,
+            min_chunk_length=args.min_chunk_length,
         )
     except FileNotFoundError as error:
         print(error)
