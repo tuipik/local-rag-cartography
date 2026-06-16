@@ -93,20 +93,20 @@
 
 Результат:
 
-* таблиця `chunks`;
-* скрипт `scripts/build_chunks.py`;
-* rule-based chunking baseline;
-* виключення OCR-кандидатів;
-* обробка дуже довгих сторінок;
-* збереження звʼязку chunk → document → page.
+* [x] таблиця `chunks`;
+* [x] скрипт `scripts/build_chunks.py`;
+* [x] rule-based chunking baseline;
+* [x] виключення OCR-кандидатів;
+* [x] обробка дуже довгих сторінок;
+* [x] збереження звʼязку chunk → document → page.
 
 Критерій приймання:
 
-* chunks створюються для документів із текстом;
-* OCR-кандидати не потрапляють у chunks;
-* дуже довгі сторінки розбиті;
-* кожен chunk має provenance: document_id, page_number, filename/path;
-* є статистика по кількості chunks, середній довжині та strategy.
+* [x] chunks створюються для документів із текстом;
+* [x] OCR-кандидати не потрапляють у chunks;
+* [x] дуже довгі сторінки розбиті;
+* [x] кожен chunk має provenance: document_id, page_number, filename/path;
+* [x] є статистика по кількості chunks, середній довжині та strategy.
 
 ---
 
