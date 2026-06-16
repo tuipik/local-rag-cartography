@@ -150,22 +150,45 @@
 
 Результат:
 
-* локальні embeddings через Ollama `bge-m3`;
-* таблиця `chunk_embeddings`;
-* скрипт `scripts/build_embeddings.py`;
-* скрипт `scripts/search_embeddings.py`;
-* semantic top-k search по cosine similarity;
-* provenance для кожного результату: файл, шлях, сторінка, document_id, chunk_id;
-* повторний запуск build не дублює embeddings.
+* [x] Додати локальні embeddings через Ollama.
+* [x] Використати модель BGE-M3.
+* [x] Зберігати embeddings у SQLite.
+* [x] Реалізувати повторний запуск без дублювання.
+* [x] Реалізувати semantic search.
+* [x] Показувати provenance для результатів.
 
 Критерій приймання:
 
-* embeddings побудовані для всіх chunks;
-* повторний запуск не дублює embeddings;
-* semantic search повертає top-k з provenance;
-* результати можна порівняти з FTS baseline;
-* немає залежності від Qdrant, LLM або Agno;
-* перевірені ті самі тестові запити, що й для FTS baseline.
+* [x] embeddings побудовані для всіх chunks;
+* [x] повторний запуск не дублює embeddings;
+* [x] semantic search повертає top-k з provenance;
+* [x] результати можна порівняти з FTS baseline;
+* [x] немає залежності від Qdrant, LLM або Agno;
+* [x] перевірені ті самі тестові запити, що й для FTS baseline.
+
+---
+
+## Етап 6.5. Оцінка FTS vs Embeddings
+
+Мета:
+
+Порівняти якість пошуку SQLite FTS5 та semantic search на однакових тестових запитах.
+
+Результат:
+
+* набір тестових запитів;
+* результати FTS;
+* результати embeddings;
+* ручна оцінка релевантності;
+* висновок, чи embeddings дають приріст;
+* рішення, чи переходити до hybrid search.
+
+Критерій приймання:
+
+* створено evaluation-звіт;
+* порівняно мінімум 5 тестових запитів;
+* для кожного запиту визначено, який пошук кращий;
+* прийнято рішення щодо Етапу 7.
 
 ---
 

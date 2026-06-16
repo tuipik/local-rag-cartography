@@ -62,7 +62,7 @@ Backend:
 
 ## Поточний етап
 
-Етап 6. Embeddings.
+Етап 6.5. Оцінка FTS vs Embeddings.
 
 ---
 
@@ -75,6 +75,7 @@ Backend:
 * Етап 3.5. Аналіз корпусу документів.
 * Етап 4. Chunking.
 * Етап 5. Retrieval без LLM.
+* Етап 6. Embeddings.
 
 ---
 
