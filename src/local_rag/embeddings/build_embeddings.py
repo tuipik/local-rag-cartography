@@ -78,21 +78,78 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         """
         CREATE TABLE IF NOT EXISTS chunk_embeddings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chunk_id INTEGER NOT NULL UNIQUE,
+            chunk_id INTEGER NOT NULL,
             model TEXT NOT NULL,
             embedding BLOB NOT NULL,
             dimension INTEGER NOT NULL,
             created_at TEXT NOT NULL,
-            FOREIGN KEY(chunk_id) REFERENCES chunks(id)
+            FOREIGN KEY(chunk_id) REFERENCES chunks(id),
+            UNIQUE(chunk_id, model)
         )
         """
     )
+    migrate_chunk_embeddings_unique_constraint(connection)
     connection.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_model
         ON chunk_embeddings(model)
         """
     )
+
+
+def migrate_chunk_embeddings_unique_constraint(connection: sqlite3.Connection) -> None:
+    indexes = connection.execute("PRAGMA index_list(chunk_embeddings)").fetchall()
+    for index in indexes:
+        index_name = index["name"]
+        is_unique = bool(index["unique"])
+        if not is_unique:
+            continue
+        indexed_columns = [
+            row["name"]
+            for row in connection.execute(f"PRAGMA index_info({index_name})").fetchall()
+        ]
+        if indexed_columns == ["chunk_id"]:
+            rebuild_chunk_embeddings_table(connection)
+            return
+
+
+def rebuild_chunk_embeddings_table(connection: sqlite3.Connection) -> None:
+    connection.execute("ALTER TABLE chunk_embeddings RENAME TO chunk_embeddings_old")
+    connection.execute(
+        """
+        CREATE TABLE chunk_embeddings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chunk_id INTEGER NOT NULL,
+            model TEXT NOT NULL,
+            embedding BLOB NOT NULL,
+            dimension INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(chunk_id) REFERENCES chunks(id),
+            UNIQUE(chunk_id, model)
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO chunk_embeddings (
+            id,
+            chunk_id,
+            model,
+            embedding,
+            dimension,
+            created_at
+        )
+        SELECT
+            id,
+            chunk_id,
+            model,
+            embedding,
+            dimension,
+            created_at
+        FROM chunk_embeddings_old
+        """
+    )
+    connection.execute("DROP TABLE chunk_embeddings_old")
 
 
 def embedding_to_blob(embedding: list[float]) -> bytes:
@@ -232,8 +289,7 @@ def save_embedding(
             dimension,
             created_at
         ) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(chunk_id) DO UPDATE SET
-            model = excluded.model,
+        ON CONFLICT(chunk_id, model) DO UPDATE SET
             embedding = excluded.embedding,
             dimension = excluded.dimension,
             created_at = excluded.created_at
