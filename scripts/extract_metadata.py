@@ -9,14 +9,24 @@ from __future__ import annotations
 
 import argparse
 import re
-import sqlite3
+import sys
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT / "src"
+sys.path.insert(0, str(SRC_ROOT))
 
-DEFAULT_DATABASE = Path("data/catalog/documents.sqlite")
+from local_rag.database import (  # noqa: E402
+    add_database_argument,
+    add_missing_columns,
+    connect_database,
+    resolve_database,
+)
+from local_rag.reporting import print_counter  # noqa: E402
+
 TEXT_LIMIT = 5000
 
 
@@ -44,13 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract document-level metadata with simple rules."
     )
-    parser.add_argument(
-        "--database",
-        "-d",
-        type=Path,
-        default=DEFAULT_DATABASE,
-        help=f"SQLite database path (default: {DEFAULT_DATABASE})",
-    )
+    add_database_argument(parser)
     parser.add_argument(
         "--text-limit",
         type=int,
@@ -65,10 +69,7 @@ def normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", value.lower()).strip()
 
 
-def initialize_database(connection: sqlite3.Connection) -> None:
-    existing_columns = {
-        row[1] for row in connection.execute("PRAGMA table_info(documents)").fetchall()
-    }
+def initialize_database(connection) -> None:
     migrations = {
         "document_number": "TEXT",
         "document_date": "TEXT",
@@ -76,14 +77,10 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "metadata_status": "TEXT",
         "metadata_notes": "TEXT",
     }
-    for column, definition in migrations.items():
-        if column not in existing_columns:
-            connection.execute(
-                f"ALTER TABLE documents ADD COLUMN {column} {definition}"
-            )
+    add_missing_columns(connection, "documents", migrations)
 
 
-def fetch_documents(connection: sqlite3.Connection, text_limit: int) -> list[DocumentInput]:
+def fetch_documents(connection, text_limit: int) -> list[DocumentInput]:
     rows = connection.execute(
         """
         SELECT
@@ -292,7 +289,7 @@ def extract_metadata(document: DocumentInput) -> Metadata:
 
 
 def save_metadata(
-    connection: sqlite3.Connection,
+    connection,
     document_id: int,
     metadata: Metadata,
 ) -> None:
@@ -326,8 +323,7 @@ def run_metadata_extraction(database: Path, text_limit: int) -> tuple[int, Count
     category_counts: Counter[str] = Counter()
     status_counts: Counter[str] = Counter()
 
-    with sqlite3.connect(database) as connection:
-        connection.row_factory = sqlite3.Row
+    with connect_database(database) as connection:
         initialize_database(connection)
         documents = fetch_documents(connection, text_limit=text_limit)
         for document in documents:
@@ -340,23 +336,18 @@ def run_metadata_extraction(database: Path, text_limit: int) -> tuple[int, Count
     return len(documents), type_counts, category_counts, status_counts
 
 
-def print_counter(title: str, counter: Counter[str]) -> None:
-    print(f"\n{title}:")
-    for value, count in sorted(counter.items()):
-        print(f"  {value}: {count}")
-
-
 def main() -> int:
     args = parse_args()
-    database = args.database.expanduser().resolve()
-    if not database.exists():
-        print(f"SQLite database not found: {database}")
-        return 2
+    database = resolve_database(args.database)
 
-    total, type_counts, category_counts, status_counts = run_metadata_extraction(
-        database,
-        text_limit=args.text_limit,
-    )
+    try:
+        total, type_counts, category_counts, status_counts = run_metadata_extraction(
+            database,
+            text_limit=args.text_limit,
+        )
+    except FileNotFoundError as error:
+        print(error)
+        return 2
     print("\nСтатистика метаданих")
     print(f"Documents processed: {total}")
     print_counter("document_type", type_counts)

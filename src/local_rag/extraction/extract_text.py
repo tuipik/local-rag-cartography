@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import shutil
-import sqlite3
 import subprocess
 import tempfile
 from collections import Counter
@@ -17,9 +16,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import pathname2url
 
+from local_rag.database import (
+    add_database_argument,
+    connect_database,
+    resolve_database,
+)
+
 
 SUPPORTED_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
-DEFAULT_DATABASE = Path("data/catalog/documents.sqlite")
 DEFAULT_DOC_TIMEOUT_SECONDS = 60
 
 
@@ -68,13 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract text from cataloged documents into SQLite."
     )
-    parser.add_argument(
-        "--database",
-        "-d",
-        type=Path,
-        default=DEFAULT_DATABASE,
-        help=f"SQLite database path (default: {DEFAULT_DATABASE})",
-    )
+    add_database_argument(parser)
     parser.add_argument(
         "--document-id",
         type=int,
@@ -354,8 +352,7 @@ def run_extraction(
     doc_timeout_seconds: int = DEFAULT_DOC_TIMEOUT_SECONDS,
 ) -> Counter[str]:
     stats: Counter[str] = Counter()
-    with sqlite3.connect(database) as connection:
-        connection.row_factory = sqlite3.Row
+    with connect_database(database) as connection:
         initialize_database(connection)
         documents = fetch_documents(connection, document_id=document_id)
         stats["documents"] = len(documents)
@@ -394,16 +391,17 @@ def print_statistics(stats: Counter[str]) -> None:
 
 def main() -> int:
     args = parse_args()
-    database = args.database.expanduser().resolve()
-    if not database.exists():
-        print(f"SQLite database not found: {database}")
-        return 2
+    database = resolve_database(args.database)
 
-    stats = run_extraction(
-        database,
-        document_id=args.document_id,
-        doc_timeout_seconds=args.doc_timeout_seconds,
-    )
+    try:
+        stats = run_extraction(
+            database,
+            document_id=args.document_id,
+            doc_timeout_seconds=args.doc_timeout_seconds,
+        )
+    except FileNotFoundError as error:
+        print(error)
+        return 2
     print_statistics(stats)
     return 0 if stats["errors"] == 0 else 1
 
