@@ -36,6 +36,7 @@ class SearchResult:
     content_category: str | None
     chunk_strategy: str
     text: str
+    boost: float
 
 
 def parse_args() -> argparse.Namespace:
@@ -62,6 +63,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--chunk-strategy",
         help="filter by chunks.chunk_strategy",
+    )
+    parser.add_argument(
+        "--prefer-reference",
+        action="store_true",
+        help="soft-rank standard_or_norms/reference chunks above generic material",
     )
     parser.add_argument(
         "--no-rebuild-index",
@@ -165,6 +171,7 @@ def fetch_results(
     document_type: str | None = None,
     content_category: str | None = None,
     chunk_strategy: str | None = None,
+    prefer_reference: bool = False,
 ) -> list[SearchResult]:
     filters = []
     text_match_expression = f"chunk_text : ({match_expression})"
@@ -196,22 +203,32 @@ def fetch_results(
             d.content_category,
             c.chunk_strategy,
             c.chunk_text,
-            bm25(chunks_fts, 1.0, 4.0, 3.0, 1.5, 2.0, 0.5) AS bm25_score
+            bm25(chunks_fts, 1.0, 4.0, 3.0, 1.5, 2.0, 0.5) AS bm25_score,
+            CASE
+                WHEN ? = 1
+                 AND d.document_type = 'standard_or_norms'
+                 AND d.content_category = 'reference'
+                THEN 5.0
+                WHEN ? = 1
+                 AND d.content_category = 'reference'
+                THEN 1.0
+                ELSE 0.0
+            END AS metadata_boost
         FROM chunks_fts
         JOIN chunks c ON c.id = chunks_fts.rowid
         JOIN documents d ON d.id = c.document_id
         WHERE chunks_fts MATCH ?
         {where_filters}
-        ORDER BY bm25_score ASC
+        ORDER BY (bm25_score - metadata_boost) ASC
         LIMIT ?
         """,
-        params,
+        [int(prefer_reference), int(prefer_reference), *params],
     ).fetchall()
 
     return [
         SearchResult(
             rank=index,
-            score=-float(row["bm25_score"]),
+            score=-float(row["bm25_score"]) + float(row["metadata_boost"]),
             chunk_id=row["chunk_id"],
             document_id=row["document_id"],
             filename=row["filename"],
@@ -221,6 +238,7 @@ def fetch_results(
             content_category=row["content_category"],
             chunk_strategy=row["chunk_strategy"],
             text=row["chunk_text"],
+            boost=float(row["metadata_boost"]),
         )
         for index, row in enumerate(rows, start=1)
     ]
@@ -234,6 +252,7 @@ def search(
     document_type: str | None = None,
     content_category: str | None = None,
     chunk_strategy: str | None = None,
+    prefer_reference: bool = False,
 ) -> tuple[list[SearchResult], str, int | None]:
     with connect_database(database) as connection:
         if rebuild_index:
@@ -250,6 +269,7 @@ def search(
             document_type=document_type,
             content_category=content_category,
             chunk_strategy=chunk_strategy,
+            prefer_reference=prefer_reference,
         )
         if not results:
             match_expression = build_match_expression(query, require_all_terms=False)
@@ -260,6 +280,7 @@ def search(
                 document_type=document_type,
                 content_category=content_category,
                 chunk_strategy=chunk_strategy,
+                prefer_reference=prefer_reference,
             )
 
     return results, match_expression, indexed_chunks
@@ -296,6 +317,8 @@ def print_results(
         print(f"   type: {result.document_type}")
         print(f"   category: {result.content_category or 'unknown'}")
         print(f"   strategy: {result.chunk_strategy}")
+        if result.boost:
+            print(f"   boost: {result.boost:.1f}")
         print(f"   chunk_id: {result.chunk_id}")
         print(f"   document_id: {result.document_id}")
         print(f"   text: {compact_text(result.text)}")
@@ -313,6 +336,7 @@ def main() -> int:
             document_type=args.document_type,
             content_category=args.content_category,
             chunk_strategy=args.chunk_strategy,
+            prefer_reference=args.prefer_reference,
         )
     except FileNotFoundError as error:
         print(error)
