@@ -148,6 +148,25 @@
 
 Порівняти класичний пошук та semantic search.
 
+Результат:
+
+* локальні embeddings через Ollama `bge-m3`;
+* таблиця `chunk_embeddings`;
+* скрипт `scripts/build_embeddings.py`;
+* скрипт `scripts/search_embeddings.py`;
+* semantic top-k search по cosine similarity;
+* provenance для кожного результату: файл, шлях, сторінка, document_id, chunk_id;
+* повторний запуск build не дублює embeddings.
+
+Критерій приймання:
+
+* embeddings побудовані для всіх chunks;
+* повторний запуск не дублює embeddings;
+* semantic search повертає top-k з provenance;
+* результати можна порівняти з FTS baseline;
+* немає залежності від Qdrant, LLM або Agno;
+* перевірені ті самі тестові запити, що й для FTS baseline.
+
 ---
 
 ## Етап 7. Hybrid Search
