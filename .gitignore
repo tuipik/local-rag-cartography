@@ -24,6 +24,9 @@ data/catalog/*.sqlite-*
 data/catalog/*.db
 data/catalog/*.db-*
 
+# Evaluation outputs
+data/evaluation/
+
 # Build and packaging
 build/
 dist/
