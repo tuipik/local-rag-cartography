@@ -13,6 +13,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT / "src"
+sys.path.insert(0, str(SRC_ROOT))
+
+from local_rag.database import (  # noqa: E402
+    add_database_argument,
+    add_missing_columns,
+    connect_database,
+    resolve_database,
+    table_columns,
+)
+
 
 SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
 DOCUMENT_TYPES = {
@@ -21,7 +33,6 @@ DOCUMENT_TYPES = {
     ".docx": "word",
     ".txt": "text",
 }
-DEFAULT_DATABASE = Path("data/catalog/documents.sqlite")
 HASH_CHUNK_SIZE = 1024 * 1024
 
 
@@ -61,13 +72,7 @@ def parse_args() -> argparse.Namespace:
         default=Path.cwd(),
         help="directory to scan recursively (default: current directory)",
     )
-    parser.add_argument(
-        "--database",
-        "-d",
-        type=Path,
-        default=DEFAULT_DATABASE,
-        help=f"SQLite database path (default: {DEFAULT_DATABASE})",
-    )
+    add_database_argument(parser)
     return parser.parse_args()
 
 
@@ -183,9 +188,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         """
     )
 
-    columns = {
-        row[1] for row in connection.execute("PRAGMA table_info(documents)").fetchall()
-    }
+    columns = table_columns(connection, "documents")
     if "category" in columns and "folder_category" not in columns:
         connection.execute(
             "ALTER TABLE documents RENAME COLUMN category TO folder_category"
@@ -206,11 +209,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "ocr_required": "INTEGER",
         "scan_status": "TEXT NOT NULL DEFAULT 'cataloged'",
     }
-    for column, definition in migrations.items():
-        if column not in columns:
-            connection.execute(
-                f"ALTER TABLE documents ADD COLUMN {column} {definition}"
-            )
+    add_missing_columns(connection, "documents", migrations)
 
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_documents_sha256 ON documents(sha256)"
@@ -225,8 +224,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
 
 
 def save_documents(database: Path, root: Path, documents: list[Document]) -> None:
-    database.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(database) as connection:
+    with connect_database(
+        database,
+        require_exists=False,
+        create_parent=True,
+        row_factory=False,
+    ) as connection:
         initialize_database(connection)
         connection.executemany(
             """
@@ -367,7 +370,7 @@ def print_statistics(
 def main() -> int:
     args = parse_args()
     root = args.directory.expanduser().resolve()
-    database = args.database.expanduser().resolve()
+    database = resolve_database(args.database)
 
     if not root.is_dir():
         print(f"Помилка: папку не знайдено: {root}", file=sys.stderr)
