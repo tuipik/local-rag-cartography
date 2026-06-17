@@ -44,7 +44,7 @@ def generate_answer(
     fts_weight: float = DEFAULT_FTS_WEIGHT,
     embedding_weight: float = DEFAULT_EMBEDDING_WEIGHT,
     temperature: float = 0.0,
-    num_predict: int = 512,
+    num_predict: int = 1024,
 ) -> AnswerResult:
     hybrid_results, _, _ = search_hybrid(
         database=database,
