@@ -62,7 +62,7 @@ Backend:
 
 ## Поточний етап
 
-Етап 8. Retrieval refinement / evaluation dataset improvement.
+Stage 8 - Local LLM Integration.
 
 ---
 

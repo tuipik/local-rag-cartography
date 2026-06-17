@@ -239,26 +239,27 @@
 
 ---
 
-## Етап 8. Evaluation dataset improvement
+## Stage 8 - Local LLM Integration
 
-Мета:
+Goal:
 
-Покращити evaluation dataset так, щоб він краще розрізняв різні типи запитів.
+Generate grounded answers from retrieved chunks.
 
-Результат:
+Scope:
 
-* [ ] додані типи запитів;
-* [ ] уточнені неоднозначні запити;
-* [ ] відокремлено conceptual queries від document lookup;
-* [ ] підготовлено основу для майбутньої оцінки LLM-відповідей.
+* [ ] Ollama integration;
+* [ ] Prompt builder;
+* [ ] Source citations;
+* [ ] No agents;
+* [ ] No Agno;
+* [ ] No reranker.
 
-Критерій приймання:
+Acceptance criteria:
 
-* [ ] кожен test query має query_type;
-* [ ] ambiguous queries явно позначені;
-* [ ] document lookup запити мають known relevant documents;
-* [ ] conceptual queries не вимагають одного конкретного документа;
-* [ ] evaluation не штрафує систему за релевантні альтернативні джерела.
+* [ ] User question;
+* [ ] Hybrid retrieval;
+* [ ] LLM answer;
+* [ ] Source references.
 
 ---
 
