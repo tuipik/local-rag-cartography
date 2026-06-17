@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate SQLite FTS retrieval against semantic embeddings retrieval."""
+"""Evaluate FTS, semantic embeddings, and hybrid retrieval."""
 
 from __future__ import annotations
 
@@ -24,11 +24,18 @@ from local_rag.embeddings.build_embeddings import (  # noqa: E402
 from local_rag.embeddings.search_embeddings import (  # noqa: E402
     search_embeddings,
 )
+from local_rag.retrieval.hybrid import (  # noqa: E402
+    DEFAULT_EMBEDDING_WEIGHT,
+    DEFAULT_FTS_WEIGHT,
+    DEFAULT_RRF_K,
+    HybridResult,
+    fuse_results,
+)
 from local_rag.retrieval.search import search as search_fts  # noqa: E402
 
 
 DEFAULT_QUERIES = Path("data/evaluation/test_queries.yaml")
-DEFAULT_REPORT = Path("data/evaluation/retrieval_evaluation.md")
+DEFAULT_REPORT = Path("data/evaluation/retrieval_evaluation_hybrid.md")
 CUTOFFS = (1, 3, 5, 10)
 
 
@@ -56,13 +63,15 @@ class QueryEvaluation:
     test_query: TestQuery
     fts_results: list[RetrievalResult]
     embedding_results: list[RetrievalResult]
+    hybrid_results: list[RetrievalResult]
     fts_first_hit_rank: int | None
     embedding_first_hit_rank: int | None
+    hybrid_first_hit_rank: int | None
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Compare SQLite FTS5 and embeddings retrieval with Hit@k metrics."
+        description="Compare SQLite FTS5, embeddings, and hybrid retrieval with Hit@k metrics."
     )
     add_database_argument(parser)
     parser.add_argument(
@@ -92,6 +101,30 @@ def parse_args() -> argparse.Namespace:
         "--prefer-reference",
         action="store_true",
         help="apply the FTS reference boost used by search_chunks.py",
+    )
+    parser.add_argument(
+        "--pool-size",
+        type=int,
+        default=50,
+        help="candidate pool size per method before hybrid fusion (default: 50)",
+    )
+    parser.add_argument(
+        "--rrf-k",
+        type=float,
+        default=DEFAULT_RRF_K,
+        help=f"RRF smoothing constant for hybrid search (default: {DEFAULT_RRF_K:g})",
+    )
+    parser.add_argument(
+        "--fts-weight",
+        type=float,
+        default=DEFAULT_FTS_WEIGHT,
+        help=f"FTS contribution weight for hybrid search (default: {DEFAULT_FTS_WEIGHT:g})",
+    )
+    parser.add_argument(
+        "--embedding-weight",
+        type=float,
+        default=DEFAULT_EMBEDDING_WEIGHT,
+        help=f"embedding contribution weight for hybrid search (default: {DEFAULT_EMBEDDING_WEIGHT:g})",
     )
     parser.add_argument(
         "--no-rebuild-fts",
@@ -260,6 +293,10 @@ def evaluate(
     ollama_url: str,
     rebuild_fts: bool,
     prefer_reference: bool,
+    pool_size: int,
+    rrf_k: float,
+    fts_weight: float,
+    embedding_weight: float,
 ) -> list[QueryEvaluation]:
     evaluations: list[QueryEvaluation] = []
     should_rebuild_fts = rebuild_fts
@@ -268,7 +305,7 @@ def evaluate(
         fts_results, _, _ = search_fts(
             database=database,
             query=test_query.query,
-            top_k=top_k,
+            top_k=pool_size,
             rebuild_index=should_rebuild_fts,
             prefer_reference=prefer_reference,
         )
@@ -277,21 +314,33 @@ def evaluate(
         embedding_results = search_embeddings(
             database=database,
             query=test_query.query,
-            top_k=top_k,
+            top_k=pool_size,
             model=model,
             ollama_url=ollama_url,
+        )
+        hybrid_results: list[HybridResult] = fuse_results(
+            fts_results=fts_results,
+            embedding_results=embedding_results,
+            top_k=top_k,
+            rrf_k=rrf_k,
+            fts_weight=fts_weight,
+            embedding_weight=embedding_weight,
         )
 
         evaluations.append(
             QueryEvaluation(
                 test_query=test_query,
-                fts_results=fts_results,
-                embedding_results=embedding_results,
+                fts_results=fts_results[:top_k],
+                embedding_results=embedding_results[:top_k],
+                hybrid_results=hybrid_results,
                 fts_first_hit_rank=first_hit_rank(
-                    fts_results, test_query.known_relevant_documents
+                    fts_results[:top_k], test_query.known_relevant_documents
                 ),
                 embedding_first_hit_rank=first_hit_rank(
-                    embedding_results, test_query.known_relevant_documents
+                    embedding_results[:top_k], test_query.known_relevant_documents
+                ),
+                hybrid_first_hit_rank=first_hit_rank(
+                    hybrid_results, test_query.known_relevant_documents
                 ),
             )
         )
@@ -311,9 +360,11 @@ def method_summary(
     method: str,
 ) -> dict[int, float]:
     ranks = [
-        evaluation.fts_first_hit_rank
-        if method == "fts"
-        else evaluation.embedding_first_hit_rank
+        {
+            "fts": evaluation.fts_first_hit_rank,
+            "embeddings": evaluation.embedding_first_hit_rank,
+            "hybrid": evaluation.hybrid_first_hit_rank,
+        }[method]
         for evaluation in evaluations
     ]
     return {
@@ -323,15 +374,21 @@ def method_summary(
 
 
 def winner(evaluation: QueryEvaluation) -> str:
-    fts_rank = evaluation.fts_first_hit_rank
-    embedding_rank = evaluation.embedding_first_hit_rank
-    if fts_rank == embedding_rank:
+    ranks = {
+        "fts": evaluation.fts_first_hit_rank,
+        "embeddings": evaluation.embedding_first_hit_rank,
+        "hybrid": evaluation.hybrid_first_hit_rank,
+    }
+    hit_ranks = {method: rank for method, rank in ranks.items() if rank is not None}
+    if not hit_ranks:
         return "tie"
-    if fts_rank is None:
-        return "embeddings"
-    if embedding_rank is None:
-        return "fts"
-    return "fts" if fts_rank < embedding_rank else "embeddings"
+    best_rank = min(hit_ranks.values())
+    winners = [
+        method for method, rank in hit_ranks.items() if rank == best_rank
+    ]
+    if len(winners) != 1:
+        return "tie"
+    return winners[0]
 
 
 def build_report(
@@ -342,12 +399,17 @@ def build_report(
     top_k: int,
     model: str,
     prefer_reference: bool,
+    pool_size: int,
+    rrf_k: float,
+    fts_weight: float,
+    embedding_weight: float,
 ) -> str:
     fts_summary = method_summary(evaluations, method="fts")
     embedding_summary = method_summary(evaluations, method="embeddings")
+    hybrid_summary = method_summary(evaluations, method="hybrid")
     winner_counts = {
         name: sum(1 for evaluation in evaluations if winner(evaluation) == name)
-        for name in ("fts", "embeddings", "tie")
+        for name in ("fts", "embeddings", "hybrid", "tie")
     }
 
     lines = [
@@ -358,8 +420,10 @@ def build_report(
         f"- Database: `{database}`",
         f"- Queries: `{queries_path}`",
         f"- Top-k: {top_k}",
+        f"- Candidate pool size: {pool_size}",
         f"- Embedding model: `{model}`",
         f"- FTS prefer reference boost: `{str(prefer_reference).lower()}`",
+        f"- Hybrid fusion: `RRF k={rrf_k:g}, fts_weight={fts_weight:g}, embedding_weight={embedding_weight:g}`",
         "",
         "## Evaluation Summary",
         "",
@@ -375,6 +439,10 @@ def build_report(
     lines.extend(
         f"Hit@{cutoff}: {embedding_summary[cutoff]:.2f}" for cutoff in CUTOFFS
     )
+    lines.extend(["", "Hybrid", "------"])
+    lines.extend(
+        f"Hit@{cutoff}: {hybrid_summary[cutoff]:.2f}" for cutoff in CUTOFFS
+    )
     lines.extend(
         [
             "",
@@ -382,6 +450,7 @@ def build_report(
             "-----------------------------",
             f"FTS: {winner_counts['fts']}",
             f"Embeddings: {winner_counts['embeddings']}",
+            f"Hybrid: {winner_counts['hybrid']}",
             f"Tie: {winner_counts['tie']}",
             "",
             "## Per-query Results",
@@ -416,6 +485,11 @@ def build_report(
                     f"{evaluation.embedding_first_hit_rank or 'none'} "
                     f"({format_hit_vector(evaluation.embedding_first_hit_rank)})"
                 ),
+                (
+                    f"Hybrid first hit: "
+                    f"{evaluation.hybrid_first_hit_rank or 'none'} "
+                    f"({format_hit_vector(evaluation.hybrid_first_hit_rank)})"
+                ),
                 f"Winner: {winner(evaluation)}",
                 "",
                 "FTS top results:",
@@ -426,6 +500,11 @@ def build_report(
         lines.append("Embeddings top results:")
         lines.extend(
             f"- {line}" for line in format_top_results(evaluation.embedding_results)
+        )
+        lines.append("")
+        lines.append("Hybrid top results:")
+        lines.extend(
+            f"- {line}" for line in format_top_results(evaluation.hybrid_results)
         )
         lines.append("")
 
@@ -446,6 +525,9 @@ def main() -> int:
     if args.top_k < max(CUTOFFS):
         print(f"--top-k must be at least {max(CUTOFFS)} for Hit@10 evaluation.")
         return 2
+    if args.pool_size < args.top_k:
+        print("--pool-size must be greater than or equal to --top-k.")
+        return 2
 
     try:
         queries = load_test_queries(queries_path)
@@ -457,6 +539,10 @@ def main() -> int:
             ollama_url=args.ollama_url,
             rebuild_fts=not args.no_rebuild_fts,
             prefer_reference=args.prefer_reference,
+            pool_size=args.pool_size,
+            rrf_k=args.rrf_k,
+            fts_weight=args.fts_weight,
+            embedding_weight=args.embedding_weight,
         )
     except (FileNotFoundError, RuntimeError, sqlite3.Error, ValueError) as error:
         print(error)
@@ -469,6 +555,10 @@ def main() -> int:
         top_k=args.top_k,
         model=args.model,
         prefer_reference=args.prefer_reference,
+        pool_size=args.pool_size,
+        rrf_k=args.rrf_k,
+        fts_weight=args.fts_weight,
+        embedding_weight=args.embedding_weight,
     )
     print_console_summary(report)
 
