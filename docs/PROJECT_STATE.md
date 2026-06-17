@@ -62,7 +62,7 @@ Backend:
 
 ## Поточний етап
 
-Етап 7. Hybrid Search.
+Етап 8. Reranking decision / retrieval refinement.
 
 ---
 
@@ -77,6 +77,7 @@ Backend:
 * Етап 5. Retrieval без LLM.
 * Етап 6. Embeddings.
 * Етап 6.5. Оцінка FTS vs Embeddings.
+* Етап 7. Hybrid Search.
 
 ---
 

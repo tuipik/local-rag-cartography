@@ -293,3 +293,31 @@ SQLite-пошук по embeddings виконується повним переб
 Причина відмови:
 
 Reranker і Qdrant поки передчасні. Спочатку треба перевірити простий hybrid baseline.
+
+---
+
+### Current retrieval baseline
+
+Рішення:
+
+Поточним retrieval baseline вважати RRF Hybrid Search.
+
+Підхід:
+
+- SQLite FTS5 дає keyword/full-text сигнал;
+- BGE-M3 embeddings дають semantic сигнал;
+- результати об'єднуються через Reciprocal Rank Fusion;
+- baseline не використовує LLM, reranker або Qdrant.
+
+Параметри:
+
+- `rrf_k = 60`;
+- `fts_weight = 1.5`;
+- `embedding_weight = 1.0`.
+
+Причини:
+
+- hybrid зберігає Hit@1 на рівні embeddings;
+- hybrid зберігає Hit@10 на рівні FTS;
+- hybrid покращує Hit@3 на evaluation-наборі;
+- підхід простий, прозорий і відтворюваний.

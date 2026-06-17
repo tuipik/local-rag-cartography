@@ -204,19 +204,19 @@
 
 Результат:
 
-* [ ] реалізовано hybrid search;
-* [ ] використано простий rank fusion;
-* [ ] порівняно FTS, embeddings та hybrid на одному evaluation наборі;
-* [ ] сформовано звіт;
-* [ ] прийнято рішення щодо reranking.
+* [x] реалізовано hybrid search;
+* [x] використано простий rank fusion;
+* [x] порівняно FTS, embeddings та hybrid на одному evaluation наборі;
+* [x] сформовано звіт;
+* [x] прийнято рішення щодо reranking.
 
 Критерій приймання:
 
-* [ ] hybrid search повертає top-k з provenance;
-* [ ] результати FTS і embeddings об'єднуються без LLM;
-* [ ] є evaluation-звіт FTS vs embeddings vs hybrid;
-* [ ] hybrid не погіршує якість на ключових запитах;
-* [ ] рішення про reranking зафіксовано в DECISIONS.md.
+* [x] hybrid search повертає top-k з provenance;
+* [x] результати FTS і embeddings об'єднуються без LLM;
+* [x] є evaluation-звіт FTS vs embeddings vs hybrid;
+* [x] hybrid не погіршує якість на ключових запитах;
+* [x] рішення про reranking зафіксовано в DECISIONS.md.
 
 ---
 
