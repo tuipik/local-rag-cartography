@@ -253,3 +253,71 @@ SQLite FTS5 не виконує українську морфологічну н
 Компроміс:
 
 SQLite-пошук по embeddings виконується повним перебором cosine similarity і не масштабується на великі корпуси.
+
+---
+
+### Hybrid search after evaluation
+
+Рішення:
+
+Після оцінки FTS vs embeddings перейти до Hybrid Search.
+
+Причини:
+
+- embeddings показали кращий Hit@1;
+- FTS показав кращий Hit@10;
+- проблемні кейси різні для FTS та embeddings;
+- отже, методи доповнюють один одного.
+
+Підхід:
+
+На першому етапі використати простий Reciprocal Rank Fusion (RRF), без reranker, без LLM і без Qdrant.
+
+Початкові параметри baseline:
+
+- `rrf_k = 60`;
+- `fts_weight = 1.5`;
+- `embedding_weight = 1.0`.
+
+Причина:
+
+На evaluation-наборі така вага зберігає сильний Hit@1 від embeddings і не погіршує Hit@10 від FTS.
+
+Альтернативи:
+
+- залишити тільки FTS;
+- залишити тільки embeddings;
+- одразу додати reranker;
+- одразу перейти на Qdrant hybrid search.
+
+Причина відмови:
+
+Reranker і Qdrant поки передчасні. Спочатку треба перевірити простий hybrid baseline.
+
+---
+
+### Current retrieval baseline
+
+Рішення:
+
+Поточним retrieval baseline вважати RRF Hybrid Search.
+
+Підхід:
+
+- SQLite FTS5 дає keyword/full-text сигнал;
+- BGE-M3 embeddings дають semantic сигнал;
+- результати об'єднуються через Reciprocal Rank Fusion;
+- baseline не використовує LLM, reranker або Qdrant.
+
+Параметри:
+
+- `rrf_k = 60`;
+- `fts_weight = 1.5`;
+- `embedding_weight = 1.0`.
+
+Причини:
+
+- hybrid зберігає Hit@1 на рівні embeddings;
+- hybrid зберігає Hit@10 на рівні FTS;
+- hybrid покращує Hit@3 на evaluation-наборі;
+- підхід простий, прозорий і відтворюваний.
