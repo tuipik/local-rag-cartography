@@ -27,6 +27,8 @@ class Source:
     page_number: int | None
     chunk_id: int
     document_id: int
+    document_type: str
+    content_category: str | None
     text: str
 
 
@@ -66,6 +68,8 @@ def build_sources(results: list[HybridResult], *, max_sources: int) -> list[Sour
                 page_number=result.page_number,
                 chunk_id=result.chunk_id,
                 document_id=result.document_id,
+                document_type=result.document_type,
+                content_category=result.content_category,
                 text=compact_text(result.text),
             )
         )
@@ -98,6 +102,18 @@ def build_prompt(
 
     if not sources:
         context = "Джерела не знайдено."
+    elif query_type == "document_lookup":
+        context = "\n".join(
+            [
+                (
+                    f"[{source.index}] filename: {source.filename}; "
+                    f"page: {source.page_number if source.page_number is not None else 'unknown'}; "
+                    f"document_type: {source.document_type}; "
+                    f"content_category: {source.content_category or 'unknown'}"
+                )
+                for source in sources
+            ]
+        )
     else:
         context = "\n\n".join(
             [
@@ -115,6 +131,12 @@ def build_prompt(
             [
                 "Це document lookup запит.",
                 "Відповідай рівно про те, які документи знайдено.",
+                "Використовуй тільки точні назви файлів із джерел.",
+                "Не перефразовуй назви документів.",
+                "Не створюй нові узагальнені назви документів.",
+                "Якщо джерело є навчальним або допоміжним, але не регламентує питання напряму — не включай його до списку регламентуючих документів.",
+                "У відповіді дозволено використовувати тільки значення після `filename:` зі списку джерел.",
+                "Не використовуй текстові фрагменти, заголовки всередині документа або пояснення як назви документів.",
                 "Обов'язковий формат відповіді:",
                 "Релевантні документи:",
                 "- Назва документа [номер джерела].",
@@ -125,7 +147,9 @@ def build_prompt(
     else:
         task_instruction = (
             "Сформуй коротку, grounded відповідь із посиланнями на джерела. "
-            "Не додавай фактів поза наведеними джерелами."
+            "Не додавай фактів поза наведеними джерелами. "
+            "Якщо питання широке, узагальнюй інформацію з кількох релевантних джерел. "
+            "Якщо наведено кілька релевантних джерел, використай і процитуй 2-3 з них, коли це можливо."
         )
 
     user_prompt = "\n\n".join(
