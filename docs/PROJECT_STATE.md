@@ -66,18 +66,18 @@ Backend:
 
 ## Поточний етап
 
-Stage 10. FastAPI Backend MVP.
+Stage 11. Simple UI MVP.
 
 ---
 
 ## Поточний фокус
 
-FastAPI Backend MVP:
+Simple UI MVP:
 
-* Надати HTTP API для майбутнього UI.
-* Пере використати наявний RAG-core: hybrid retrieval, prompt builder, Ollama client, answer generator і source formatter.
-* Підтримати `GET /health` і `POST /ask`.
-* Auth, streaming, chat history, document opening і UI не входять у поточну ітерацію.
+* Надати базовий React/Vite інтерфейс для роботи з RAG.
+* Дозволити користувачу ввести питання, надіслати його у FastAPI і побачити відповідь.
+* Показувати структуровані sources з `relative_path`, `location` і `preview`.
+* Auth, streaming, chat history, document opening і admin UI не входять у поточну ітерацію.
 
 ---
 
@@ -97,6 +97,7 @@ FastAPI Backend MVP:
 * Stage 8.5. Model benchmark.
 * Stage 8.6. Final model selection.
 * Stage 9. Source Traceability / Citation Improvements.
+* Stage 10. FastAPI Backend MVP.
 
 ---
 

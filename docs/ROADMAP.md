@@ -373,19 +373,46 @@ Acceptance criteria:
 
 ---
 
-## Stage 11. OCR
+## Stage 11. Simple UI MVP
+
+Мета:
+
+Надати базовий веб-інтерфейс для роботи з RAG.
+
+Scope:
+
+* [x] React + Vite
+* [x] Question input
+* [x] Ask button
+* [x] Answer display
+* [x] Sources display
+* [x] Loading state
+* [x] Error handling
+
+Out of scope:
+
+* auth
+* streaming
+* chat history
+* document opening
+* admin UI
+
+Acceptance criteria:
+
+* [x] користувач може поставити питання
+* [x] UI отримує відповідь через FastAPI
+* [x] UI показує answer
+* [x] UI показує sources
+* [x] UI показує preview
+* [x] немає дублювання бізнес-логіки
+
+---
+
+## Stage 12. OCR
 
 Мета:
 
 Підтримка сканованих документів.
-
----
-
-## Stage 12. UI
-
-Мета:
-
-Інтерфейс користувача.
 
 ---
 
