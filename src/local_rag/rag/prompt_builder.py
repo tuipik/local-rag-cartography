@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from local_rag.rag.source_formatter import format_source
 from local_rag.retrieval.hybrid import HybridResult
 
 
@@ -28,6 +29,9 @@ class Source:
     absolute_path: str | None
     scan_root: str | None
     page_number: int | None
+    chunk_index: int
+    start_char: int | None
+    end_char: int | None
     chunk_id: int
     document_id: int
     document_type: str
@@ -72,6 +76,9 @@ def build_sources(results: list[HybridResult], *, max_sources: int) -> list[Sour
                 absolute_path=result.absolute_path,
                 scan_root=result.scan_root,
                 page_number=result.page_number,
+                chunk_index=result.chunk_index,
+                start_char=result.start_char,
+                end_char=result.end_char,
                 chunk_id=result.chunk_id,
                 document_id=result.document_id,
                 document_type=result.document_type,
@@ -84,8 +91,29 @@ def build_sources(results: list[HybridResult], *, max_sources: int) -> list[Sour
     return sources
 
 
-def display_path(source: Source) -> str:
-    return source.relative_path or source.filename
+def document_lookup_context(source: Source) -> str:
+    formatted_source = format_source(source)
+    return (
+        f"[{source.index}]\n"
+        f"Document: {formatted_source.display_path}\n"
+        f"Location: {formatted_source.location}\n"
+        f"Type: {source.document_type}\n"
+        f"Category: {source.content_category or 'unknown'}\n"
+        f"Preview: {formatted_source.preview}"
+    )
+
+
+def conceptual_context(source: Source) -> str:
+    formatted_source = format_source(source)
+    return (
+        f"[{source.index}]\n"
+        f"Document: {formatted_source.display_path}\n"
+        f"Location: {formatted_source.location}\n"
+        f"Type: {source.document_type}\n"
+        f"Category: {source.content_category or 'unknown'}\n"
+        f"Preview: {formatted_source.preview}\n"
+        f"Text:\n{source.text}"
+    )
 
 
 def build_prompt(
@@ -114,29 +142,11 @@ def build_prompt(
         context = "Джерела не знайдено."
     elif query_type == "document_lookup":
         context = "\n".join(
-            [
-                (
-                    f"[{source.index}] filename: {display_path(source)}; "
-                    f"page: {source.page_number if source.page_number is not None else 'unknown'}; "
-                    f"document_type: {source.document_type}; "
-                    f"content_category: {source.content_category or 'unknown'}"
-                )
-                for source in sources
-            ]
+            [document_lookup_context(source) for source in sources]
         )
     else:
         context = "\n\n".join(
-            [
-                (
-                    f"[{source.index}]\n"
-                    f"Document: {display_path(source)}\n"
-                    f"Page: {source.page_number if source.page_number is not None else 'unknown'}\n"
-                    f"Type: {source.document_type}\n"
-                    f"Category: {source.content_category or 'unknown'}\n"
-                    f"Text:\n{source.text}"
-                )
-                for source in sources
-            ]
+            [conceptual_context(source) for source in sources]
         )
 
     if query_type == "document_lookup":
@@ -148,7 +158,7 @@ def build_prompt(
                 "Не перефразовуй назви документів.",
                 "Не створюй нові узагальнені назви документів.",
                 "Якщо джерело є навчальним або допоміжним, але не регламентує питання напряму — не включай його до списку регламентуючих документів.",
-                "У відповіді дозволено використовувати тільки значення після `filename:` зі списку джерел.",
+                "У відповіді дозволено використовувати тільки значення після `Document:` зі списку джерел.",
                 "Не використовуй текстові фрагменти, заголовки всередині документа або пояснення як назви документів.",
                 "Обов'язковий формат відповіді:",
                 "Релевантні документи:",

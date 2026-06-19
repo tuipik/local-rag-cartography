@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import http.client
 import json
 import re
 import socket
@@ -20,6 +21,7 @@ from local_rag.embeddings.build_embeddings import (
 )
 from local_rag.embeddings.build_embeddings import DEFAULT_OLLAMA_URL
 from local_rag.rag.prompt_builder import BuiltPrompt, Source, build_prompt
+from local_rag.rag.source_formatter import format_source
 from local_rag.retrieval.hybrid import (
     DEFAULT_EMBEDDING_WEIGHT,
     DEFAULT_FTS_WEIGHT,
@@ -136,7 +138,13 @@ class SourceRecord:
     relative_path: str | None
     absolute_path: str | None
     scan_root: str | None
+    display_path: str
+    location: str
+    preview: str
     page_number: int | None
+    chunk_index: int
+    start_char: int | None
+    end_char: int | None
     chunk_id: int
     document_id: int
     document_type: str
@@ -282,6 +290,8 @@ def request_json(
             return json.loads(response.read().decode("utf-8"))
     except (TimeoutError, socket.timeout) as error:
         raise RuntimeError(f"Ollama request timed out after {timeout} seconds") from error
+    except http.client.RemoteDisconnected as error:
+        raise RuntimeError(f"Ollama request failed: {error}") from error
     except urllib.error.URLError as error:
         raise RuntimeError(f"Ollama request failed: {error}") from error
 
@@ -338,6 +348,7 @@ def generate_raw_answer(
 
 
 def source_to_record(source: Source) -> SourceRecord:
+    formatted_source = format_source(source)
     return SourceRecord(
         index=source.index,
         filename=source.filename,
@@ -345,7 +356,13 @@ def source_to_record(source: Source) -> SourceRecord:
         relative_path=source.relative_path,
         absolute_path=source.absolute_path,
         scan_root=source.scan_root,
+        display_path=formatted_source.display_path,
+        location=formatted_source.location,
+        preview=formatted_source.preview,
         page_number=source.page_number,
+        chunk_index=source.chunk_index,
+        start_char=source.start_char,
+        end_char=source.end_char,
         chunk_id=source.chunk_id,
         document_id=source.document_id,
         document_type=source.document_type,
@@ -354,21 +371,22 @@ def source_to_record(source: Source) -> SourceRecord:
     )
 
 
-def build_retrieved_context(sources: list[Source]) -> str:
-    return "\n\n".join(
-        [
-            (
-                f"[{source.index}]\n"
-                f"Document: {source.relative_path or source.filename}\n"
-                f"Page: {source.page_number if source.page_number is not None else 'unknown'}\n"
-                f"Document ID: {source.document_id}\n"
-                f"Type: {source.document_type}\n"
-                f"Category: {source.content_category or 'unknown'}\n"
-                f"Text:\n{source.text}"
-            )
-            for source in sources
-        ]
+def retrieved_context_block(source: Source) -> str:
+    formatted_source = format_source(source)
+    return (
+        f"[{source.index}]\n"
+        f"Document: {formatted_source.display_path}\n"
+        f"Location: {formatted_source.location}\n"
+        f"Document ID: {source.document_id}\n"
+        f"Type: {source.document_type}\n"
+        f"Category: {source.content_category or 'unknown'}\n"
+        f"Preview: {formatted_source.preview}\n"
+        f"Text:\n{source.text}"
     )
+
+
+def build_retrieved_context(sources: list[Source]) -> str:
+    return "\n\n".join([retrieved_context_block(source) for source in sources])
 
 
 def build_final_prompt(prompt: BuiltPrompt) -> str:
@@ -487,14 +505,13 @@ def count_flag(results: list[BenchmarkResult], field_name: str) -> int:
 
 
 def source_lines(sources: list[SourceRecord]) -> list[str]:
-    return [
-        (
-            f"[{source.index}] {source.relative_path or source.filename}, "
-            f"page {source.page_number if source.page_number is not None else 'unknown'}, "
-            f"document_id={source.document_id}"
+    lines = []
+    for source in sources:
+        lines.append(
+            f"[{source.index}] {source.display_path} — "
+            f"{source.location}, document_id={source.document_id}"
         )
-        for source in sources
-    ]
+    return lines
 
 
 def write_jsonl(path: Path, results: list[BenchmarkResult]) -> None:

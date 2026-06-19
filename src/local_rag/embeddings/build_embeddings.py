@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import math
 import sqlite3
@@ -184,6 +185,8 @@ def request_json(url: str, payload: dict[str, object]) -> dict[str, object]:
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
             return json.loads(response.read().decode("utf-8"))
+    except http.client.RemoteDisconnected as error:
+        raise RuntimeError(f"Ollama request failed: {error}") from error
     except urllib.error.URLError as error:
         raise RuntimeError(f"Ollama request failed: {error}") from error
 
