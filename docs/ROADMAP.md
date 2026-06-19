@@ -339,7 +339,41 @@ Reason:
 
 ---
 
-## Етап 10. OCR
+## Stage 10. FastAPI Backend MVP
+
+Мета:
+
+Надати HTTP API для майбутнього UI.
+
+Scope:
+
+* [x] FastAPI app
+* [x] `GET /health`
+* [x] `POST /ask`
+* [x] Pydantic request/response schemas
+* [x] reuse existing RAG-core
+* [x] structured sources in API response
+
+Out of scope:
+
+* auth
+* users
+* chat history
+* streaming
+* document opening
+* UI
+
+Acceptance criteria:
+
+* [x] API starts with uvicorn
+* [x] `/health` returns ok
+* [x] `/ask` returns answer, sources, meta
+* [x] sources include `relative_path`, `location`, `preview`
+* [x] API does not duplicate RAG logic from CLI
+
+---
+
+## Stage 11. OCR
 
 Мета:
 
@@ -347,15 +381,7 @@ Reason:
 
 ---
 
-## Етап 11. API
-
-Мета:
-
-Надати інтерфейс доступу до системи.
-
----
-
-## Етап 12. UI
+## Stage 12. UI
 
 Мета:
 
@@ -363,7 +389,7 @@ Reason:
 
 ---
 
-## Етап 13. Agent Layer (опціонально)
+## Stage 13. Agent Layer (опціонально)
 
 Мета:
 

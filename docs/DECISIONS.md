@@ -417,3 +417,22 @@ DOC/DOCX після extraction часто не мають достовірної
 Компроміс:
 
 Fragment/chars location ще не ідеальний для кінцевого користувача, але краще за фальшиву сторінку. Надалі треба додати section/paragraph-based location.
+
+---
+
+### FastAPI backend before UI
+
+Рішення:
+
+Перед створенням UI реалізувати мінімальний FastAPI backend.
+
+Причини:
+
+- UI не повинен напряму викликати CLI scripts;
+- API задає стабільний контракт між frontend і RAG-core;
+- backend зможе пізніше відповідати за відкриття документів, авторизацію, чергу LLM-запитів і streaming;
+- простіше тестувати RAG як сервіс.
+
+Компроміс:
+
+На цьому етапі API мінімальний: тільки `/health` і `/ask`. Auth, streaming, chat history і document opening відкладаються.

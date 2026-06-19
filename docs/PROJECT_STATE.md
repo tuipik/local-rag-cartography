@@ -60,22 +60,24 @@ LLM:
 Backend:
 
 * Python
+* FastAPI
 
 ---
 
 ## Поточний етап
 
-Stage 9. Source Traceability / Citation Improvements.
+Stage 10. FastAPI Backend MVP.
 
 ---
 
 ## Поточний фокус
 
-Source traceability MVP:
+FastAPI Backend MVP:
 
-* PDF джерела показують `relative_path` і page number.
-* DOC/DOCX/TXT джерела показують `relative_path`, fragment/chunk location, character range і preview замість оманливого `page 1`.
-* OCR, Word layout parsing і UI file opening не входять у поточну ітерацію.
+* Надати HTTP API для майбутнього UI.
+* Пере використати наявний RAG-core: hybrid retrieval, prompt builder, Ollama client, answer generator і source formatter.
+* Підтримати `GET /health` і `POST /ask`.
+* Auth, streaming, chat history, document opening і UI не входять у поточну ітерацію.
 
 ---
 
@@ -94,6 +96,16 @@ Source traceability MVP:
 * Етап 7.5. Retrieval error analysis.
 * Stage 8.5. Model benchmark.
 * Stage 8.6. Final model selection.
+* Stage 9. Source Traceability / Citation Improvements.
+
+---
+
+## Current API status
+
+Implemented:
+
+* `GET /health`
+* `POST /ask`
 
 ---
 
