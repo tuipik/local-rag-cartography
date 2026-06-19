@@ -241,25 +241,27 @@
 
 ## Stage 8 - Local LLM Integration
 
+Status: Done.
+
 Goal:
 
 Generate grounded answers from retrieved chunks.
 
 Scope:
 
-* [ ] Ollama integration;
-* [ ] Prompt builder;
-* [ ] Source citations;
-* [ ] No agents;
-* [ ] No Agno;
-* [ ] No reranker.
+* [x] Ollama integration;
+* [x] Prompt builder;
+* [x] Source citations;
+* [x] No agents;
+* [x] No Agno;
+* [x] No reranker.
 
 Acceptance criteria:
 
-* [ ] User question;
-* [ ] Hybrid retrieval;
-* [ ] LLM answer;
-* [ ] Source references.
+* [x] User question;
+* [x] Hybrid retrieval;
+* [x] LLM answer;
+* [x] Source references.
 
 ---
 
@@ -325,7 +327,7 @@ Reason:
 
 Критерій приймання:
 
-* [ ] sources містять `relative_path`;
+* [x] sources містять `relative_path`;
 * [ ] PDF sources містять page number;
 * [ ] DOC/DOCX sources не вводять в оману фальшивою сторінкою;
 * [ ] є план або реалізація human-readable location для DOC/DOCX.

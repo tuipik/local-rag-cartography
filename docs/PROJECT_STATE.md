@@ -46,9 +46,10 @@ Embeddings:
 
 * BGE-M3
 
-Vector DB:
+Vector storage:
 
-* Qdrant
+* SQLite `chunk_embeddings` for current MVP
+* Qdrant deferred until corpus size or retrieval requirements justify it
 
 LLM:
 
