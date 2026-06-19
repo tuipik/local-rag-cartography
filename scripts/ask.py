@@ -123,7 +123,8 @@ def print_sources(sources: list[object]) -> None:
         return
     for source in sources:
         page = source.page_number if source.page_number is not None else "unknown"
-        print(f"[{source.index}] {source.filename}, page {page}")
+        display_path = source.relative_path or source.filename
+        print(f"[{source.index}] {display_path}, page {page}")
 
 
 def main() -> int:

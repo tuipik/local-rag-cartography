@@ -46,13 +46,16 @@ Embeddings:
 
 * BGE-M3
 
-Vector DB:
+Vector storage:
 
-* Qdrant
+* SQLite `chunk_embeddings` for current MVP
+* Qdrant deferred until corpus size or retrieval requirements justify it
 
 LLM:
 
-* ще не затверджено
+* Primary: `gemma4:e2b`
+* Fallback: `gemma3:4b`
+* Reference baseline: `qwen3:8b`
 
 Backend:
 
@@ -62,7 +65,7 @@ Backend:
 
 ## Поточний етап
 
-Stage 8 - Local LLM Integration.
+Stage 9. Source Traceability / Citation Improvements.
 
 ---
 
@@ -79,6 +82,16 @@ Stage 8 - Local LLM Integration.
 * Етап 6.5. Оцінка FTS vs Embeddings.
 * Етап 7. Hybrid Search.
 * Етап 7.5. Retrieval error analysis.
+* Stage 8.5. Model benchmark.
+* Stage 8.6. Final model selection.
+
+---
+
+## Поточна модель MVP
+
+Primary LLM: `gemma4:e2b`  
+Fallback LLM: `gemma3:4b`  
+Reference baseline: `qwen3:8b`
 
 ---
 

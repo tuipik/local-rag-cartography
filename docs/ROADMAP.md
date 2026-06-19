@@ -241,33 +241,96 @@
 
 ## Stage 8 - Local LLM Integration
 
+Status: Done.
+
 Goal:
 
 Generate grounded answers from retrieved chunks.
 
 Scope:
 
-* [ ] Ollama integration;
-* [ ] Prompt builder;
-* [ ] Source citations;
-* [ ] No agents;
-* [ ] No Agno;
-* [ ] No reranker.
+* [x] Ollama integration;
+* [x] Prompt builder;
+* [x] Source citations;
+* [x] No agents;
+* [x] No Agno;
+* [x] No reranker.
 
 Acceptance criteria:
 
-* [ ] User question;
-* [ ] Hybrid retrieval;
-* [ ] LLM answer;
-* [ ] Source references.
+* [x] User question;
+* [x] Hybrid retrieval;
+* [x] LLM answer;
+* [x] Source references.
 
 ---
 
-## Етап 9. LLM
+## Stage 8.5 - Model Benchmark
+
+Status: Done.
+
+Goal:
+
+Обрати основну локальну LLM-модель для MVP на основі якості відповіді, швидкості, стабільності, цитування, української мови та відсутності reasoning leaks.
+
+Result:
+
+* [x] benchmark виконано на фінальних моделях;
+* [x] збережено markdown/html/jsonl звіти;
+* [x] порівняно швидкість, thinking leaks, language issues, citation behavior;
+* [x] визначено фінальних кандидатів.
+
+Acceptance criteria:
+
+* [x] Benchmark script discovers Ollama models;
+* [x] Benchmark reports are generated for selected models;
+* [x] Summary markdown and HTML reports are generated;
+* [x] JSONL with timings, prompts, contexts, answers, sources and quality flags is generated;
+* [x] Benchmark reports show source `relative_path`, not only filename.
+
+---
+
+## Stage 8.6. Final model selection
+
+Status: Done.
+
+Decision:
+
+* Primary model: `gemma4:e2b`
+* Fallback model: `gemma3:4b`
+* Reference baseline: `qwen3:8b`
+
+Reason:
+
+`gemma4:e2b` показала найкращий баланс швидкості, стабільності, української мови та no-answer поведінки.
+
+---
+
+## Stage 9. Source Traceability / Citation Improvements
 
 Мета:
 
-Генерація відповідей на основі retrieval.
+Покращити джерела так, щоб користувач міг реально знайти фрагмент у документі.
+
+Проблема:
+
+Зараз для DOC/DOCX часто показується `page 1`, бо документ витягується як один великий текстовий блок.
+
+Потрібно підтримати:
+
+* для PDF залишити сторінки;
+* для DOC/DOCX додати більш людську локалізацію: розділ, пункт, абзац або фрагмент;
+* таблиці: сторінка + таблиця / рядок, якщо можливо;
+* у відповідях показувати `relative_path`;
+* у майбутньому UI відкривати файл через backend endpoint;
+* не використовувати `chunk_id` як основне посилання для кінцевого користувача.
+
+Критерій приймання:
+
+* [x] sources містять `relative_path`;
+* [ ] PDF sources містять page number;
+* [ ] DOC/DOCX sources не вводять в оману фальшивою сторінкою;
+* [ ] є план або реалізація human-readable location для DOC/DOCX.
 
 ---
 
