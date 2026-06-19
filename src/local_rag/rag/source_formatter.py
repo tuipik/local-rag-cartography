@@ -9,7 +9,6 @@ from typing import Protocol
 
 
 PDF_EXTENSIONS = {".pdf"}
-FRAGMENT_EXTENSIONS = {".doc", ".docx", ".txt"}
 DEFAULT_PREVIEW_CHARS = 220
 
 
