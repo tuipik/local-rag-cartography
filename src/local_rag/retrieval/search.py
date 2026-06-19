@@ -31,6 +31,9 @@ class SearchResult:
     document_id: int
     filename: str
     path: str
+    relative_path: str | None
+    absolute_path: str | None
+    scan_root: str | None
     page_number: int | None
     document_type: str
     content_category: str | None
@@ -102,7 +105,9 @@ def rebuild_fts(connection: sqlite3.Connection) -> int:
             c.id AS chunk_id,
             c.chunk_text,
             d.name AS filename,
-            d.relative_path AS path,
+            d.relative_path,
+            d.path AS absolute_path,
+            d.scan_root,
             d.document_type,
             COALESCE(d.content_category, '') AS content_category,
             c.chunk_strategy
@@ -128,7 +133,7 @@ def rebuild_fts(connection: sqlite3.Connection) -> int:
                 row["chunk_id"],
                 row["chunk_text"],
                 row["filename"],
-                row["path"],
+                row["relative_path"],
                 row["document_type"],
                 row["content_category"],
                 row["chunk_strategy"],
@@ -197,7 +202,10 @@ def fetch_results(
             c.id AS chunk_id,
             c.document_id,
             d.name AS filename,
-            d.relative_path AS path,
+            d.path AS path,
+            d.relative_path,
+            d.path AS absolute_path,
+            d.scan_root,
             c.page_number,
             d.document_type,
             d.content_category,
@@ -233,6 +241,9 @@ def fetch_results(
             document_id=row["document_id"],
             filename=row["filename"],
             path=row["path"],
+            relative_path=row["relative_path"],
+            absolute_path=row["absolute_path"],
+            scan_root=row["scan_root"],
             page_number=row["page_number"],
             document_type=row["document_type"],
             content_category=row["content_category"],
@@ -312,7 +323,7 @@ def print_results(
         print()
         print(f"{result.rank}. score: {result.score:.6f}")
         print(f"   file: {result.filename}")
-        print(f"   path: {result.path}")
+        print(f"   path: {result.relative_path or result.filename}")
         print(f"   page: {result.page_number}")
         print(f"   type: {result.document_type}")
         print(f"   category: {result.content_category or 'unknown'}")

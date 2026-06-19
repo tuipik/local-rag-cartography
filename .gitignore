@@ -27,6 +27,9 @@ data/catalog/*.db-*
 # Evaluation outputs
 data/evaluation/
 
+# Benchmark outputs
+data/benchmark/
+
 # Build and packaging
 build/
 dist/

@@ -24,6 +24,9 @@ class Source:
     index: int
     filename: str
     path: str
+    relative_path: str | None
+    absolute_path: str | None
+    scan_root: str | None
     page_number: int | None
     chunk_id: int
     document_id: int
@@ -65,6 +68,9 @@ def build_sources(results: list[HybridResult], *, max_sources: int) -> list[Sour
                 index=len(sources) + 1,
                 filename=result.filename,
                 path=result.path,
+                relative_path=result.relative_path,
+                absolute_path=result.absolute_path,
+                scan_root=result.scan_root,
                 page_number=result.page_number,
                 chunk_id=result.chunk_id,
                 document_id=result.document_id,
@@ -76,6 +82,10 @@ def build_sources(results: list[HybridResult], *, max_sources: int) -> list[Sour
         if len(sources) >= max_sources:
             break
     return sources
+
+
+def display_path(source: Source) -> str:
+    return source.relative_path or source.filename
 
 
 def build_prompt(
@@ -106,7 +116,7 @@ def build_prompt(
         context = "\n".join(
             [
                 (
-                    f"[{source.index}] filename: {source.filename}; "
+                    f"[{source.index}] filename: {display_path(source)}; "
                     f"page: {source.page_number if source.page_number is not None else 'unknown'}; "
                     f"document_type: {source.document_type}; "
                     f"content_category: {source.content_category or 'unknown'}"
@@ -118,9 +128,12 @@ def build_prompt(
         context = "\n\n".join(
             [
                 (
-                    f"[{source.index}] {source.filename}, "
-                    f"page {source.page_number if source.page_number is not None else 'unknown'}, "
-                    f"chunk {source.chunk_id}\n{source.text}"
+                    f"[{source.index}]\n"
+                    f"Document: {display_path(source)}\n"
+                    f"Page: {source.page_number if source.page_number is not None else 'unknown'}\n"
+                    f"Type: {source.document_type}\n"
+                    f"Category: {source.content_category or 'unknown'}\n"
+                    f"Text:\n{source.text}"
                 )
                 for source in sources
             ]

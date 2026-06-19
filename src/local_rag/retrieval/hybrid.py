@@ -28,6 +28,9 @@ class HybridResult:
     document_id: int
     filename: str
     path: str
+    relative_path: str | None
+    absolute_path: str | None
+    scan_root: str | None
     page_number: int | None
     document_type: str
     content_category: str | None
@@ -172,6 +175,9 @@ def fuse_results(
                 document_id=source.document_id,
                 filename=source.filename,
                 path=source.path,
+                relative_path=source.relative_path,
+                absolute_path=source.absolute_path,
+                scan_root=source.scan_root,
                 page_number=source.page_number,
                 document_type=source.document_type,
                 content_category=source.content_category,
@@ -246,7 +252,7 @@ def print_results(
         print()
         print(f"{result.rank}. hybrid_score: {result.score:.6f}")
         print(f"   file: {result.filename}")
-        print(f"   path: {result.path}")
+        print(f"   path: {result.relative_path or result.filename}")
         print(f"   page: {result.page_number}")
         print(f"   type: {result.document_type}")
         print(f"   category: {result.content_category or 'unknown'}")

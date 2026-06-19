@@ -10,7 +10,9 @@ import urllib.request
 from dataclasses import dataclass
 
 
-DEFAULT_LLM_MODEL = "qwen3:8b"
+# DEFAULT_LLM_MODEL = "qwen3:8b"
+# DEFAULT_LLM_MODEL = "gemma3:4b"
+DEFAULT_LLM_MODEL = "gemma4:e2b"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_NUM_PREDICT = 1024
 
