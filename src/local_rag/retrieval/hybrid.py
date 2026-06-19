@@ -10,6 +10,7 @@ from pathlib import Path
 from local_rag.database import add_database_argument, resolve_database
 from local_rag.embeddings.build_embeddings import DEFAULT_MODEL, DEFAULT_OLLAMA_URL
 from local_rag.embeddings.search_embeddings import SemanticResult, search_embeddings
+from local_rag.rag.source_formatter import format_source
 from local_rag.retrieval.search import SearchResult, search as search_fts
 
 
@@ -32,6 +33,9 @@ class HybridResult:
     absolute_path: str | None
     scan_root: str | None
     page_number: int | None
+    chunk_index: int
+    start_char: int | None
+    end_char: int | None
     document_type: str
     content_category: str | None
     chunk_strategy: str
@@ -179,6 +183,9 @@ def fuse_results(
                 absolute_path=source.absolute_path,
                 scan_root=source.scan_root,
                 page_number=source.page_number,
+                chunk_index=source.chunk_index,
+                start_char=source.start_char,
+                end_char=source.end_char,
                 document_type=source.document_type,
                 content_category=source.content_category,
                 chunk_strategy=source.chunk_strategy,
@@ -253,7 +260,7 @@ def print_results(
         print(f"{result.rank}. hybrid_score: {result.score:.6f}")
         print(f"   file: {result.filename}")
         print(f"   path: {result.relative_path or result.filename}")
-        print(f"   page: {result.page_number}")
+        print(f"   location: {format_source(result).location}")
         print(f"   type: {result.document_type}")
         print(f"   category: {result.content_category or 'unknown'}")
         print(f"   strategy: {result.chunk_strategy}")

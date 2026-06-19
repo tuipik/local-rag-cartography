@@ -328,9 +328,14 @@ Reason:
 Критерій приймання:
 
 * [x] sources містять `relative_path`;
-* [ ] PDF sources містять page number;
-* [ ] DOC/DOCX sources не вводять в оману фальшивою сторінкою;
-* [ ] є план або реалізація human-readable location для DOC/DOCX.
+* [x] PDF sources містять page number;
+* [x] DOC/DOCX sources не вводять в оману фальшивою сторінкою;
+* [x] sources мають location;
+* [x] sources мають preview або character range;
+* [x] `ask.py` показує новий формат;
+* [x] benchmark reports показують новий формат;
+* [x] немає OCR/layout ускладнення;
+* [x] є реалізація human-readable location для DOC/DOCX.
 
 ---
 

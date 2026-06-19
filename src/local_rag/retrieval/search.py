@@ -17,6 +17,7 @@ from local_rag.database import (
     connect_database,
     resolve_database,
 )
+from local_rag.rag.source_formatter import format_source
 
 
 DEFAULT_TOP_K = 10
@@ -35,6 +36,9 @@ class SearchResult:
     absolute_path: str | None
     scan_root: str | None
     page_number: int | None
+    chunk_index: int
+    start_char: int | None
+    end_char: int | None
     document_type: str
     content_category: str | None
     chunk_strategy: str
@@ -207,6 +211,9 @@ def fetch_results(
             d.path AS absolute_path,
             d.scan_root,
             c.page_number,
+            c.chunk_index,
+            c.start_char,
+            c.end_char,
             d.document_type,
             d.content_category,
             c.chunk_strategy,
@@ -245,6 +252,9 @@ def fetch_results(
             absolute_path=row["absolute_path"],
             scan_root=row["scan_root"],
             page_number=row["page_number"],
+            chunk_index=row["chunk_index"],
+            start_char=row["start_char"],
+            end_char=row["end_char"],
             document_type=row["document_type"],
             content_category=row["content_category"],
             chunk_strategy=row["chunk_strategy"],
@@ -324,7 +334,7 @@ def print_results(
         print(f"{result.rank}. score: {result.score:.6f}")
         print(f"   file: {result.filename}")
         print(f"   path: {result.relative_path or result.filename}")
-        print(f"   page: {result.page_number}")
+        print(f"   location: {format_source(result).location}")
         print(f"   type: {result.document_type}")
         print(f"   category: {result.content_category or 'unknown'}")
         print(f"   strategy: {result.chunk_strategy}")

@@ -399,3 +399,21 @@ Reference / slow baseline: `qwen3:8b`.
 - `qwen3.5:9b` — занадто повільна;
 - `mistral:7b` — не дав достатньої переваги над Gemma;
 - `sorc/qwen3.5-instruct-uncensored:2b` — швидка, але community/uncensored модель, небажана як основна.
+
+---
+
+### Source traceability strategy
+
+Рішення:
+
+Для PDF основною локалізацією джерела є сторінка.
+
+Для DOC/DOCX/TXT на поточному етапі не використовувати `page 1` як повноцінне посилання, якщо документ був витягнутий як один великий текстовий блок. Замість цього показувати `relative_path`, chunk/fragment location, character range і короткий preview.
+
+Причина:
+
+DOC/DOCX після extraction часто не мають достовірної сторінкової структури. Показ `page 1` вводить користувача в оману.
+
+Компроміс:
+
+Fragment/chars location ще не ідеальний для кінцевого користувача, але краще за фальшиву сторінку. Надалі треба додати section/paragraph-based location.

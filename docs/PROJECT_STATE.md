@@ -69,6 +69,16 @@ Stage 9. Source Traceability / Citation Improvements.
 
 ---
 
+## Поточний фокус
+
+Source traceability MVP:
+
+* PDF джерела показують `relative_path` і page number.
+* DOC/DOCX/TXT джерела показують `relative_path`, fragment/chunk location, character range і preview замість оманливого `page 1`.
+* OCR, Word layout parsing і UI file opening не входять у поточну ітерацію.
+
+---
+
 ## Виконано
 
 * Етап 0. Проєктування.

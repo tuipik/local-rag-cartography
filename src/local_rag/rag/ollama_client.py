@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import http.client
 import re
 import socket
 import urllib.error
@@ -36,6 +37,8 @@ def request_json(url: str, payload: dict[str, object], *, timeout: int = 180) ->
             return json.loads(response.read().decode("utf-8"))
     except (TimeoutError, socket.timeout) as error:
         raise RuntimeError(f"Ollama request timed out after {timeout} seconds") from error
+    except http.client.RemoteDisconnected as error:
+        raise RuntimeError(f"Ollama request failed: {error}") from error
     except urllib.error.URLError as error:
         raise RuntimeError(f"Ollama request failed: {error}") from error
 

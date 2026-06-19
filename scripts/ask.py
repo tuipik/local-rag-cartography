@@ -19,6 +19,7 @@ from local_rag.embeddings.build_embeddings import (  # noqa: E402
 from local_rag.embeddings.build_embeddings import DEFAULT_OLLAMA_URL  # noqa: E402
 from local_rag.rag.answer_generator import generate_answer  # noqa: E402
 from local_rag.rag.ollama_client import DEFAULT_LLM_MODEL  # noqa: E402
+from local_rag.rag.source_formatter import format_source  # noqa: E402
 from local_rag.retrieval.hybrid import (  # noqa: E402
     DEFAULT_EMBEDDING_WEIGHT,
     DEFAULT_FTS_WEIGHT,
@@ -105,7 +106,7 @@ def parse_args() -> argparse.Namespace:
         "--num-predict",
         type=int,
         default=1024,
-        help="maximum number of generated tokens (default: 512)",
+        help="maximum number of generated tokens (default: 1024)",
     )
     return parser.parse_args()
 
@@ -122,9 +123,10 @@ def print_sources(sources: list[object]) -> None:
         print("(none)")
         return
     for source in sources:
-        page = source.page_number if source.page_number is not None else "unknown"
-        display_path = source.relative_path or source.filename
-        print(f"[{source.index}] {display_path}, page {page}")
+        formatted_source = format_source(source)
+        print(f"[{source.index}] {formatted_source.display_path} — {formatted_source.location}")
+        if formatted_source.preview:
+            print(f"    preview: \"{formatted_source.preview}\"")
 
 
 def main() -> int:
