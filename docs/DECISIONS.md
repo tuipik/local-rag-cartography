@@ -501,3 +501,22 @@ Inline citations виду `[1]`, `[2]` у відповіді робити клі
 Компроміс:
 
 Inline citation links залежать від того, чи модель коректно ставить citation ids. Якщо citation id не знайдено серед sources, UI залишає його звичайним текстом.
+
+---
+
+### Deployment postponed until after UI redesign
+
+Рішення:
+
+Deployment & Production Readiness перенести після Stage 12 Modern UI / UX.
+
+Причини:
+
+- API став достатньо стабільним, щоб UI development міг рухатися без постійних breaking changes;
+- production deployment варто готувати після того, як інтерфейс досягне MVP-якості;
+- передчасна production-інфраструктура може закріпити незручні UX/API припущення;
+- наступний пріоритет — перевірити usability системи очима користувача.
+
+Компроміс:
+
+Production configuration, Docker Compose, logging, queue для LLM-запитів і deployment guide відкладаються до Stage 13.

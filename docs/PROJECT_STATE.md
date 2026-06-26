@@ -66,20 +66,34 @@ Backend:
 
 ## Поточний етап
 
-Stage 11.5. Evidence-based Sources and Document Links.
+Stage 12. Modern UI / UX.
 
 ---
 
 ## Поточний фокус
 
-Evidence-based sources and document links:
+Modern UI / UX:
 
-* Зробити inline citations у відповіді клікабельними.
-* Відкривати або завантажувати документи через backend endpoints, а не через абсолютні локальні шляхи.
-* Показувати всі retrieved sources, які були передані моделі як контекст.
-* Для no-answer відповідей називати блок джерел "Переглянуті джерела".
-* Підтримати PDF page links, де це можливо.
-* Auth, audit log, full DOCX preview і paragraph-level opening не входять у поточну ітерацію.
+* Покращити usability після завершення Core RAG MVP.
+* Оновити дизайн, layout, answer viewer і source display.
+* Підготувати UX до майбутнього deployment.
+* Production readiness переноситься на Stage 13.
+
+---
+
+## Current status
+
+Completed:
+
+* Stage 11.5. Evidence-based Sources and Document Links.
+
+Next milestone:
+
+Stage 12. Modern UI / UX.
+
+Reason:
+
+Core RAG stack is considered stable. The next priority is improving usability before deployment.
 
 ---
 
@@ -101,6 +115,7 @@ Evidence-based sources and document links:
 * Stage 9. Source Traceability / Citation Improvements.
 * Stage 10. FastAPI Backend MVP.
 * Stage 11. Simple UI MVP.
+* Stage 11.5. Evidence-based Sources and Document Links.
 
 ---
 

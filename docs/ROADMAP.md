@@ -445,16 +445,66 @@ Acceptance criteria:
 
 ---
 
-## Stage 12. OCR
+## Stage 12. Modern UI / UX
 
 Мета:
 
-Підтримка сканованих документів.
+Покращити користувацький досвід після завершення Core RAG MVP.
+
+Scope:
+
+* [ ] сучасний responsive UI
+* [ ] новий дизайн
+* [ ] markdown rendering
+* [ ] покращений viewer відповідей
+* [ ] покращене відображення джерел
+* [ ] clickable citations
+* [ ] document preview
+* [ ] streaming support
+* [ ] loading animation
+* [ ] dark/light theme
+* [ ] mobile-friendly layout
 
 ---
 
-## Stage 13. Agent Layer (опціонально)
+## Stage 13. Deployment & Production Readiness
 
 Мета:
 
-Експерименти з Agno та агентами.
+Підготувати систему до стабільного запуску поза dev-середовищем.
+
+Scope:
+
+* [ ] Docker Compose
+* [ ] `.env` configuration
+* [ ] production configuration
+* [ ] logging
+* [ ] queue for LLM requests
+* [ ] health checks
+* [ ] graceful shutdown
+* [ ] deployment guide
+* [ ] Ubuntu installation guide
+
+---
+
+## Stage 14. OCR Pipeline
+
+Мета:
+
+Підтримка сканованих документів і OCR-кандидатів.
+
+---
+
+## Stage 15. Retrieval Quality v2
+
+Мета:
+
+Покращити якість retrieval після UI і production baseline.
+
+---
+
+## Stage 16. Advanced features
+
+Мета:
+
+Розширені можливості після стабілізації MVP.
