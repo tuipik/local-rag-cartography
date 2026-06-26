@@ -66,18 +66,19 @@ Backend:
 
 ## Поточний етап
 
-Stage 11. Simple UI MVP.
+Stage 11.5. Evidence-based Sources and Document Links.
 
 ---
 
 ## Поточний фокус
 
-Simple UI MVP:
+Evidence-based sources and document links:
 
-* Надати базовий React/Vite інтерфейс для роботи з RAG.
-* Дозволити користувачу ввести питання, надіслати його у FastAPI і побачити відповідь.
-* Показувати структуровані sources з `relative_path`, `location` і `preview`.
-* Auth, streaming, chat history, document opening і admin UI не входять у поточну ітерацію.
+* Зробити inline citations у відповіді клікабельними.
+* Відкривати або завантажувати документи через backend endpoints, а не через абсолютні локальні шляхи.
+* Розділити used sources і retrieved sources у відповіді API.
+* Підтримати PDF page links, де це можливо.
+* Auth, audit log, full DOCX preview і paragraph-level opening не входять у поточну ітерацію.
 
 ---
 
@@ -98,6 +99,7 @@ Simple UI MVP:
 * Stage 8.6. Final model selection.
 * Stage 9. Source Traceability / Citation Improvements.
 * Stage 10. FastAPI Backend MVP.
+* Stage 11. Simple UI MVP.
 
 ---
 
@@ -107,6 +109,12 @@ Implemented:
 
 * `GET /health`
 * `POST /ask`
+
+Planned:
+
+* `GET /documents/{document_id}/metadata`
+* `GET /documents/{document_id}/download`
+* `GET /documents/{document_id}/view`
 
 ---
 
