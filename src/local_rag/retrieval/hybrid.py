@@ -14,8 +14,8 @@ from local_rag.rag.source_formatter import format_source
 from local_rag.retrieval.search import SearchResult, search as search_fts
 
 
-DEFAULT_TOP_K = 10
-DEFAULT_POOL_SIZE = 50
+DEFAULT_TOP_K = 20
+DEFAULT_POOL_SIZE = 70
 DEFAULT_RRF_K = 60.0
 DEFAULT_FTS_WEIGHT = 1.5
 DEFAULT_EMBEDDING_WEIGHT = 1.0

@@ -24,7 +24,6 @@ export function HomePage() {
     try {
       const response = await askQuestion({
         question: trimmedQuestion,
-        top_k: 5,
         llm_model: 'gemma4:e2b',
         num_predict: 1024,
       });
