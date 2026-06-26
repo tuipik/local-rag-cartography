@@ -373,19 +373,79 @@ Acceptance criteria:
 
 ---
 
-## Stage 11. OCR
+## Stage 11. Simple UI MVP
+
+Мета:
+
+Надати базовий веб-інтерфейс для роботи з RAG.
+
+Scope:
+
+* [x] React + Vite
+* [x] Question input
+* [x] Ask button
+* [x] Answer display
+* [x] Sources display
+* [x] Loading state
+* [x] Error handling
+
+Out of scope:
+
+* auth
+* streaming
+* chat history
+* document opening
+* admin UI
+
+Acceptance criteria:
+
+* [x] користувач може поставити питання
+* [x] UI отримує відповідь через FastAPI
+* [x] UI показує answer
+* [x] UI показує sources
+* [x] UI показує preview
+* [x] немає дублювання бізнес-логіки
+
+---
+
+## Stage 11.5. Evidence-based Sources and Document Links
+
+Мета:
+
+Зробити citations і sources у UI доказовими та клікабельними без розкриття абсолютних локальних шляхів.
+
+Scope:
+
+* [ ] parse used citation ids from answer
+* [ ] show only used sources in UI
+* [ ] make inline citations clickable
+* [ ] add document view/download endpoints
+* [ ] add source links in bibliography
+* [ ] support PDF page links where possible
+
+Out of scope:
+
+* full DOCX preview
+* paragraph-level opening in Office
+* auth
+* audit log
+
+Acceptance criteria:
+
+* [ ] `/ask` response separates `used_sources` and `retrieved_sources`
+* [ ] inline citations like `[2]` are clickable in the UI
+* [ ] source cards include view/download links
+* [ ] documents are opened or downloaded through backend endpoints
+* [ ] absolute local paths are not exposed to the browser
+* [ ] PDF links preserve page number where possible
+
+---
+
+## Stage 12. OCR
 
 Мета:
 
 Підтримка сканованих документів.
-
----
-
-## Stage 12. UI
-
-Мета:
-
-Інтерфейс користувача.
 
 ---
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import PurePath
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from local_rag.api.schemas import (
     AskMeta,
@@ -20,6 +21,17 @@ from local_rag.rag.source_formatter import format_source
 
 
 app = FastAPI(title="Local RAG Cartography API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 def source_type(path: str) -> str:

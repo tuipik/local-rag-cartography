@@ -66,18 +66,19 @@ Backend:
 
 ## Поточний етап
 
-Stage 10. FastAPI Backend MVP.
+Stage 11.5. Evidence-based Sources and Document Links.
 
 ---
 
 ## Поточний фокус
 
-FastAPI Backend MVP:
+Evidence-based sources and document links:
 
-* Надати HTTP API для майбутнього UI.
-* Пере використати наявний RAG-core: hybrid retrieval, prompt builder, Ollama client, answer generator і source formatter.
-* Підтримати `GET /health` і `POST /ask`.
-* Auth, streaming, chat history, document opening і UI не входять у поточну ітерацію.
+* Зробити inline citations у відповіді клікабельними.
+* Відкривати або завантажувати документи через backend endpoints, а не через абсолютні локальні шляхи.
+* Розділити used sources і retrieved sources у відповіді API.
+* Підтримати PDF page links, де це можливо.
+* Auth, audit log, full DOCX preview і paragraph-level opening не входять у поточну ітерацію.
 
 ---
 
@@ -97,6 +98,8 @@ FastAPI Backend MVP:
 * Stage 8.5. Model benchmark.
 * Stage 8.6. Final model selection.
 * Stage 9. Source Traceability / Citation Improvements.
+* Stage 10. FastAPI Backend MVP.
+* Stage 11. Simple UI MVP.
 
 ---
 
@@ -106,6 +109,12 @@ Implemented:
 
 * `GET /health`
 * `POST /ask`
+
+Planned:
+
+* `GET /documents/{document_id}/metadata`
+* `GET /documents/{document_id}/download`
+* `GET /documents/{document_id}/view`
 
 ---
 
