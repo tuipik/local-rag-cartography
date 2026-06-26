@@ -3,12 +3,13 @@ import { SourceCard } from './SourceCard';
 
 interface SourcesPanelProps {
   sources: Source[];
+  title: string;
 }
 
-export function SourcesPanel({ sources }: SourcesPanelProps) {
+export function SourcesPanel({ sources, title }: SourcesPanelProps) {
   return (
     <section className="panel">
-      <h2>Джерела</h2>
+      <h2>{title}</h2>
       {sources.length === 0 ? (
         <p className="muted">Джерела зʼявляться після відповіді.</p>
       ) : (

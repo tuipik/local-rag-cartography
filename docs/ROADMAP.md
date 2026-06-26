@@ -416,28 +416,32 @@ Acceptance criteria:
 
 Scope:
 
-* [ ] parse used citation ids from answer
-* [ ] show only used sources in UI
-* [ ] make inline citations clickable
-* [ ] add document view/download endpoints
-* [ ] add source links in bibliography
-* [ ] support PDF page links where possible
+* [x] parse citation ids from answer
+* [x] make inline citations clickable
+* [x] show all retrieved sources in UI
+* [x] no-answer responses show the sources block as "Переглянуті джерела"
+* [x] add `/documents/{document_id}/view`
+* [x] add `/documents/{document_id}/download`
+* [x] add source links in bibliography
+* [x] support PDF page links with `#page=N`
 
 Out of scope:
 
-* full DOCX preview
-* paragraph-level opening in Office
 * auth
 * audit log
+* xdg-open
+* DOCX paragraph-level opening
+* embedded PDF viewer
 
 Acceptance criteria:
 
-* [ ] `/ask` response separates `used_sources` and `retrieved_sources`
-* [ ] inline citations like `[2]` are clickable in the UI
-* [ ] source cards include view/download links
-* [ ] documents are opened or downloaded through backend endpoints
-* [ ] absolute local paths are not exposed to the browser
-* [ ] PDF links preserve page number where possible
+* [x] inline citations like `[2]` are clickable in the UI
+* [x] all retrieved sources are shown
+* [x] no-answer responses show the sources block as "Переглянуті джерела"
+* [x] source cards include view/download links
+* [x] documents are opened or downloaded through backend endpoints
+* [x] absolute local paths are not exposed to the browser
+* [x] PDF links preserve page number where possible
 
 ---
 

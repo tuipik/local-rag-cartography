@@ -36,12 +36,25 @@ class AskRequest(BaseModel):
 
 
 class SourceResponse(BaseModel):
+    citation_id: int
     document_id: int
     relative_path: str
     location: str
     preview: str
     page_number: int | None
     source_type: str
+    view_url: str
+    download_url: str
+
+
+class DocumentMetadataResponse(BaseModel):
+    document_id: int
+    name: str
+    relative_path: str
+    extension: str
+    source_type: str
+    view_url: str
+    download_url: str
 
 
 class AskMeta(BaseModel):
@@ -49,9 +62,12 @@ class AskMeta(BaseModel):
     embedding_model: str
     top_k: int
     source_count: int
+    retrieved_source_count: int
 
 
 class AskResponse(BaseModel):
     answer: str
     sources: list[SourceResponse]
+    used_sources: list[SourceResponse]
+    retrieved_sources: list[SourceResponse]
     meta: AskMeta

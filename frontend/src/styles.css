@@ -121,6 +121,19 @@ h2 {
   line-height: 1.65;
 }
 
+.citation-link {
+  border-radius: 6px;
+  padding: 0 3px;
+  color: #2746b8;
+  background: #e8efff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.citation-link:hover {
+  text-decoration: underline;
+}
+
 .muted {
   margin-bottom: 0;
   color: #6b7890;
@@ -156,6 +169,7 @@ h2 {
 }
 
 .source-type,
+.source-citation,
 .source-location {
   border-radius: 999px;
   padding: 4px 10px;
@@ -166,6 +180,11 @@ h2 {
 .source-type {
   color: #143a8f;
   background: #e8efff;
+}
+
+.source-citation {
+  color: #603000;
+  background: #fff1d6;
 }
 
 .source-location {
@@ -182,6 +201,28 @@ h2 {
 .source-preview {
   color: #354158;
   line-height: 1.55;
+}
+
+.source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.source-actions a {
+  border: 1px solid #c8d3e2;
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #172033;
+  background: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.source-actions a:hover {
+  border-color: #3d63dd;
+  color: #2746b8;
 }
 
 .source-meta {

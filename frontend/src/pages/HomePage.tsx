@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { askQuestion, type AskResponse } from '../api/ragApi';
+import { isNoAnswer } from '../api/noAnswer';
 import { AnswerPanel } from '../components/AnswerPanel';
 import { QuestionForm } from '../components/QuestionForm';
 import { SourcesPanel } from '../components/SourcesPanel';
@@ -9,6 +10,7 @@ export function HomePage() {
   const [result, setResult] = useState<AskResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sourcesTitle = result?.answer && isNoAnswer(result.answer) ? 'Переглянуті джерела' : 'Джерела';
 
   async function handleSubmit() {
     const trimmedQuestion = question.trim();
@@ -51,8 +53,8 @@ export function HomePage() {
 
       {error ? <div className="error-message">{error}</div> : null}
 
-      <AnswerPanel answer={result?.answer ?? null} />
-      <SourcesPanel sources={result?.sources ?? []} />
+      <AnswerPanel answer={result?.answer ?? null} sources={result?.sources ?? []} />
+      <SourcesPanel sources={result?.sources ?? []} title={sourcesTitle} />
     </main>
   );
 }
